@@ -249,6 +249,20 @@ const countries = [
 ];
 
 
+
+const quotes = [
+    "The only way to do great work is to love what you do. - Steve Jobs",
+    "The best way to predict the future is to invent it. - Alan Kay",
+    "Your time is limited, don't waste it living someone else's life. - Steve Jobs",
+    "The purpose of our lives is to be happy. - Dalai Lama",
+    "Life is what happens when you're busy making other plans. - John Lennon",
+    "Get busy living or get busy dying. - Stephen King",
+    "You have within you right now, everything you need to deal with whatever the world can throw at you. - Brian Tracy",
+    "Believe you can and you're halfway there. - Theodore Roosevelt",
+    "The only limit to our realization of tomorrow is our doubts of today. - Franklin D. Roosevelt",
+    "Do not wait to strike till the iron is hot; but make it hot by striking. - William Butler Yeats"
+];
+
 window.onload = () => {
     const locationInput = document.getElementById('locationInput');
     countries.forEach(country => {
@@ -257,7 +271,9 @@ window.onload = () => {
         option.textContent = country.name;
         locationInput.appendChild(option);
     });
-}
+
+    showRandomQuote();
+};
 
 function showCommentForm() {
     const commentForm = document.getElementById('wall');
@@ -275,35 +291,49 @@ function hideCommentForm() {
 
 function getRandomPosition() {
     const wall = document.getElementById('messages');
-    const wallWidth = wall.scrollWidth; // Use scrollWidth for a larger wall
-    const wallHeight = wall.scrollHeight; // Use scrollHeight for a larger wall
+    const wallWidth = wall.scrollWidth;
+    const wallHeight = wall.scrollHeight;
 
-    const randomX = Math.floor(Math.random() * (wallWidth - 200)); // Adjust for message width
-    const randomY = Math.floor(Math.random() * (wallHeight - 200)); // Adjust for message height
+    const randomX = Math.floor(Math.random() * (wallWidth - 200));
+    const randomY = Math.floor(Math.random() * (wallHeight - 200));
 
     return { x: randomX, y: randomY };
 }
 
 function addMessage() {
+    const nameInput = document.getElementById('nameInput');
     const messageInput = document.getElementById('messageInput');
     const locationInput = document.getElementById('locationInput');
 
+    const nameText = nameInput.value.trim();
     const messageText = messageInput.value.trim();
     const locationValue = locationInput.value;
+    const date = new Date().toLocaleDateString();
 
     if (messageText) {
         const messagesContainer = document.getElementById('messages');
         const newMessage = document.createElement('div');
         newMessage.className = 'message';
 
+        if (nameText) {
+            const nameElement = document.createElement('p');
+            nameElement.textContent = `From: ${nameText}`;
+            newMessage.appendChild(nameElement);
+        }
+
         const textElement = document.createElement('p');
         textElement.textContent = messageText;
         newMessage.appendChild(textElement);
 
+        const dateElement = document.createElement('p');
+        dateElement.className = 'date';
+        dateElement.textContent = date;
+        newMessage.appendChild(dateElement);
+
         if (locationValue) {
             const flag = document.createElement('img');
             flag.className = 'flag';
-            flag.src = `https://flagcdn.com/20x15/${locationValue.toLowerCase()}.png`; // Using flagcdn for flag images
+            flag.src = `https://flagcdn.com/20x15/${locationValue.toLowerCase()}.png`;
             flag.alt = locationValue;
             newMessage.appendChild(flag);
         }
@@ -320,6 +350,7 @@ function addMessage() {
 
         positionAndAppendMessage(newMessage);
 
+        nameInput.value = '';
         messageInput.value = '';
         locationInput.value = '';
     }
@@ -337,5 +368,14 @@ function incrementHeartCount(heartReaction) {
     const heartCount = heartReaction.querySelector('.heart-count');
     let count = parseInt(heartCount.innerHTML);
     heartCount.innerHTML = count + 1;
-    heartReaction.onclick = null; // Disable further likes from the same user
+    heartReaction.onclick = null;
+}
+
+function showRandomQuote() {
+    const quoteContainer = document.getElementById('quoteContainer');
+
+    setInterval(() => {
+        const randomIndex = Math.floor(Math.random() * quotes.length);
+        quoteContainer.textContent = quotes[randomIndex];
+    }, 10000); // change quote every 10 seconds
 }

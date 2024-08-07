@@ -3,25 +3,26 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-image: url('assets/bulletin-board.jpg'); /* Bulletin board background image */
-    background-size: cover;
+    background: #F5F5DC; 
     margin: 0;
     padding: 0;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    color: #333;
+    position: relative;
 }
 
 #header {
     text-align: center;
-    background-color: #fff8dc;
+    background-color: rgba(255, 248, 220, 0.9);
     padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     margin-bottom: 20px;
     width: 80%;
     max-width: 600px;
     position: relative;
     z-index: 10;
+    backdrop-filter: blur(10px);
 }
 
 h1 {
@@ -34,13 +35,13 @@ h1 {
 .symbol {
     width: 48px;
     height: 48px;
-    margin-left: 10px; 
+    margin-left: 10px;
     filter: invert(41%) sepia(69%) saturate(3338%) hue-rotate(354deg) brightness(93%) contrast(95%);
 }
 
 h2 {
     color: #8b4513;
-    font-size: 1.2em;
+    font-size: 1.4em;
     margin: 5px 0;
 }
 
@@ -55,89 +56,93 @@ p {
 }
 
 button#addCommentButton, button#backButton {
-    padding: 10px 20px;
+    padding: 12px 24px;
     background-color: #ff6347;
     color: white;
     border: none;
     cursor: pointer;
-    border-radius: 10px;
-    font-size: 1em;
+    border-radius: 12px;
+    font-size: 1.1em;
     font-family: 'Lora', serif;
     margin: 5px 0;
+    transition: background-color 0.3s, transform 0.2s;
 }
 
 button#addCommentButton:hover, button#backButton:hover {
     background-color: #e5533d;
+    transform: scale(1.05);
 }
 
 #wall {
-    background-color: #fff8dc;
+    background-color: rgba(255, 248, 220, 0.9);
     padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 80%;
     max-width: 600px;
     margin: 20px auto;
+    backdrop-filter: blur(10px);
 }
 
-textarea, select {
+input, textarea, select {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     margin-top: 10px;
     border: 2px solid #d2691e;
-    border-radius: 10px;
+    border-radius: 12px;
     font-size: 1em;
     font-family: 'Lora', serif;
 }
 
 label {
     margin-top: 10px;
-    font-size: 0.9em;
+    font-size: 1em;
     color: #8b4513;
 }
 
 button {
     margin-top: 10px;
-    padding: 10px 20px;
+    padding: 12px 24px;
     background-color: #ff6347;
     color: white;
     border: none;
     cursor: pointer;
-    border-radius: 10px;
-    font-size: 1em;
+    border-radius: 12px;
+    font-size: 1.1em;
     font-family: 'Lora', serif;
+    transition: background-color 0.3s, transform 0.2s;
 }
 
 button:hover {
     background-color: #e5533d;
+    transform: scale(1.05);
 }
 
 #messages {
     position: relative;
     width: 100%;
-    height: calc(100% - 200px); 
     background: transparent;
-    overflow: auto;
-    top: 200px; 
+    overflow: visible; /* ensure messages don't scroll separately */
+    padding-bottom: 200px; /* extra space for scrolling */
 }
 
 .message {
     background: #ffffe0;
-    padding: 10px;
-    border-radius: 10px;
+    padding: 15px;
+    border-radius: 15px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    position: absolute;
     font-size: 1.1em;
     transform: rotate(-2deg);
-    width: 200px;
+    width: 250px;
     word-wrap: break-word;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    margin-top: 40px; /* Adjust for larger thumbtack */
+    margin: 20px;
+    position: absolute;
 }
 
 .message img {
@@ -149,14 +154,14 @@ button:hover {
 .message:before {
     content: "";
     position: absolute;
-    top: -30px; /* Adjust for larger thumbtack */
-    left: 45%; /* Slightly to the left */
+    top: -35px;
+    left: 45%;
     transform: translateX(-50%);
-    width: 40px; /* Larger thumbtack */
+    width: 40px;
     height: 40px;
-    background-image: url('assets/thumbtack.png'); /* Thumbtack image */
+    background-image: url('assets/thumbtack.png');
     background-size: cover;
-    z-index: -1; /* Ensure thumbtack is behind the card */
+    z-index: -1;
 }
 
 .message .flag {
@@ -167,6 +172,13 @@ button:hover {
     height: 15px;
     border-radius: 3px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.message .date {
+    font-size: 0.9em;
+    color: #555;
+    margin-top: 10px;
+    text-align: right;
 }
 
 .reactions {
@@ -185,9 +197,9 @@ button:hover {
     background-color: #ff6347;
     color: white;
     padding: 5px 10px;
-    border-radius: 10px;
+    border-radius: 12px;
     margin-top: 10px;
-    transition: transform 0.2s ease-in-out; /* Animation for like button */
+    transition: transform 0.2s ease-in-out;
 }
 
 .reaction span {
@@ -196,5 +208,16 @@ button:hover {
 }
 
 .reaction:active {
-    transform: scale(1.2); /* Animation effect on click */
+    transform: scale(1.2);
+}
+
+#quoteContainer {
+    width: 80%;
+    max-width: 600px;
+    color: rgba(139, 69, 19, 0.6); /* translucent text color */
+    font-size: 1.2em;
+    text-align: center;
+    margin-top: -20px;
+    margin-bottom: 20px;
+    font-style: italic;
 }

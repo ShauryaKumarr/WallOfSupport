@@ -20,6 +20,7 @@
         </div>
         <div id="wall" style="display: none;">
             <button id="backButton" onclick="hideCommentForm()">Back</button>
+            <input id="nameInput" type="text" placeholder="Your Name">
             <textarea id="messageInput" rows="3" placeholder="Write your message here..."></textarea>
             <label for="locationInput">Select your country:</label>
             <select id="locationInput">
@@ -29,6 +30,7 @@
             <button onclick="addMessage()">Post</button>
         </div>
     </div>
+    <div id="quoteContainer"></div>
     <div id="messages"></div>
 
     <script src="scripts.js"></script>
