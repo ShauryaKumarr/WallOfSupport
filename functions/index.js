@@ -2,6 +2,8 @@ const functions = require("firebase-functions");
 const fetch = require("node-fetch");
 const cors = require("cors")({ origin: true });
 
+
+
 exports.checkToxicity = functions.https.onRequest((req, res) => {
     cors(req, res, async () => {
         const messageText = req.body.messageText;
@@ -23,13 +25,14 @@ exports.checkToxicity = functions.https.onRequest((req, res) => {
 
             const result = await response.json();
             const score = result.attributeScores.TOXICITY.summaryScore.value;
-            res.json({ isToxic: score >= 0.4 });
+            res.json({ isToxic: score >= 0.2 });
         } catch (error) {
             console.error("Error checking toxicity:", error);
             res.status(500).send("Server Error");
         }
     });
 });
+
 
 exports.checkSentiment = functions.https.onRequest((req, res) => {
     cors(req, res, async () => {
