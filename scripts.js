@@ -314,8 +314,11 @@ async function addMessage() {
     }
 
     // Check for toxicity and sentiment
-    const isToxic = await checkToxicity(messageText);
-    const sentimentScore = await checkSentiment(messageText);
+    console.log("Add message function triggered");
+    const isToxic = awaitcheckToxicity(messageText);
+    console.log("Toxicity check completed", isToxic);
+    const sentimentScore = awaitcheckSentiment(messageText);
+    console.log("Sentiment check completed", sentimentScore);
 
     if (isToxic) {
         alert("Your message was detected as potentially harmful and cannot be posted.");
