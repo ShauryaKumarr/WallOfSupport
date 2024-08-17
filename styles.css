@@ -1,0 +1,251 @@
+body {
+    font-family: 'Lora', serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #F5F5DC; /* Document-like background color */
+    background-size: cover;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    color: #333;
+    position: relative;
+}
+
+#header {
+    text-align: center;
+    background-color: rgba(255, 248, 220, 0.9);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    width: 80%;
+    max-width: 600px;
+    position: relative;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+}
+
+h1 {
+    color: #d2691e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.symbol {
+    width: 48px;
+    height: 48px;
+    margin-left: 10px;
+    filter: invert(41%) sepia(69%) saturate(3338%) hue-rotate(354deg) brightness(93%) contrast(95%);
+}
+
+h2 {
+    color: #8b4513;
+    font-size: 1.4em;
+    margin: 5px 0;
+}
+
+p {
+    color: #8b4513;
+    margin: 5px 0 10px 0;
+}
+
+#buttonContainer {
+    display: flex;
+    justify-content: center;
+}
+
+button#addCommentButton, button#backButton {
+    padding: 12px 24px;
+    background-color: #ff6347;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 12px;
+    font-size: 1.1em;
+    font-family: 'Lora', serif;
+    margin: 5px 0;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+button#addCommentButton:hover, button#backButton:hover {
+    background-color: #e5533d;
+    transform: scale(1.05);
+}
+
+#wall {
+    background-color: rgba(255, 248, 220, 0.9);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    max-width: 600px;
+    margin: 20px auto;
+    backdrop-filter: blur(10px);
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border: 2px solid #d2691e;
+    border-radius: 12px;
+    font-size: 1em;
+    font-family: 'Lora', serif;
+}
+
+label {
+    margin-top: 10px;
+    font-size: 1em;
+    color: #8b4513;
+}
+
+button {
+    margin-top: 10px;
+    padding: 12px 24px;
+    background-color: #ff6347;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 12px;
+    font-size: 1.1em;
+    font-family: 'Lora', serif;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+button:hover {
+    background-color: #e5533d;
+    transform: scale(1.05);
+}
+
+#messages {
+    position: relative;
+    width: 100%;
+    background: transparent;
+    overflow: visible; /* Ensure messages don't scroll separately */
+    padding-bottom: 200px; /* Extra space for scrolling */
+}
+
+.message {
+    background: #ffffe0;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    font-size: 1.1em;
+    transform: rotate(-2deg);
+    width: 250px;
+    word-wrap: break-word;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin: 20px;
+    position: absolute;
+    color: #8b4513; /* Change font color */
+    cursor: grab; /* Add move cursor */
+    transition: transform 0.2s;
+}
+
+.message:active {
+    cursor: grabbing;
+    transform: rotate(0deg); /* Straighten while dragging */
+}
+
+.message img {
+    max-width: 100%;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.message:before {
+    content: "";
+    position: absolute;
+    top: -25px; /* Adjusted thumbtack position */
+    left: 45%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    background-image: url('assets/thumbtack.png');
+    background-size: cover;
+    z-index: -1;
+}
+
+.message .flag {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 25px; /* Larger flag */
+    height: 18px;
+    border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.message .date-time {
+    font-size: 0.8em; /* Slightly smaller font size */
+    color: #8b4513;
+    text-align: right;
+    margin-top: 5px; /* Reduced space */
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    display: flex;
+    flex-direction: column;
+}
+
+.date-time p {
+    margin: 0;
+}
+
+.reactions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 10px;
+    width: 100%;
+    padding-left: 10px;
+}
+
+.reaction {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    background-color: #ff6347;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 12px;
+    margin-top: 10px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.reaction span {
+    margin-left: 5px;
+    font-size: 1em;
+}
+
+.reaction:active {
+    transform: scale(1.2);
+}
+
+#quoteContainer {
+    width: 80%;
+    max-width: 600px;
+    color: rgba(139, 69, 19, 0.6); /* Translucent text color */
+    font-size: 1.2em;
+    text-align: center;
+    margin-top: -20px;
+    margin-bottom: 20px;
+    font-style: italic;
+    font-family: 'Raleway', sans-serif;
+    animation: fadeInOut 10s infinite; /* Fade in and out animation */
+    animation-delay: 0s; /* Start animation immediately */
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { opacity: 0; }
+}

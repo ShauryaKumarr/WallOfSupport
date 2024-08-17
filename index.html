@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wall of Support</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&family=Raleway&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    
+    <div id="header">
+        <h1>
+            Wall of Support
+            <img src="assets/globe.png" alt="Peace Icon" class="symbol">
+        </h1>
+        <h2>Everyone needs a little hand sometimes.</h2>
+        <p>Leave a comment to lift someone's spirit and help grow our wall of positivity.</p>
+        <div id="buttonContainer">
+            <button id="addCommentButton" onclick="showCommentForm()">Add Comment</button>
+        </div>
+        <div id="wall" style="display: none;">
+            <button id="backButton" onclick="hideCommentForm()">Back</button>
+            <input id="nameInput" type="text" placeholder="Your Name">
+            <textarea id="messageInput" rows="3" placeholder="Write your message here..."></textarea>
+            <label for="locationInput">Select your country:</label>
+            <select id="locationInput">
+                <option value="">Select your country</option>
+                <!-- Country options will be populated here -->
+            </select>
+            <button onclick="addMessage()">Post</button>
+        </div>
+    </div>
+    <div id="quoteContainer"></div>
+    <div id="messages"></div>
+
+    <script src="config.js"></script>
+    <script src="scripts.js"></script>
+</body>
+</html>
