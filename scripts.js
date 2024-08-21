@@ -308,21 +308,6 @@ async function addMessage() {
         return;
     }
 
-    // Check for toxicity and sentiment
-    console.log("Add message function triggered");
-    const isToxic = await checkToxicity(messageText);
-    console.log("Toxicity check completed", isToxic);
-    const sentimentScore = await checkSentiment(messageText);
-    console.log("Sentiment check completed", sentimentScore);
-
-    if (isToxic) {
-        alert("Your message was detected as potentially harmful and cannot be posted.");
-        return;
-    } else if (sentimentScore < 0) {  // Check for negative sentiment
-        alert("Your message appears to be negative. Please keep it positive.");
-        return;
-    }
-
     // const messagesContainer = document.getElementById('messages');
     const newMessage = document.createElement('div');
     newMessage.className = 'message';
@@ -437,51 +422,6 @@ function drop(event) {
 function drag_over(event) {
     event.preventDefault();
     return false;
-}
-
-// utilizing google cloud API for content filtering
-async function checkToxicity(messageText) {
-    try {
-        const response = await fetch('https://us-central1-wallofsupport-d9d19.cloudfunctions.net/checkToxicity', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ messageText }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Error in fetching toxicity data');
-        }
-
-        const result = await response.json();
-        return result.isToxic;
-    } catch (error) {
-        console.error('Error checking toxicity:', error);
-        return false;  // Default to not toxic in case of error
-    }
-}
-
-async function checkSentiment(messageText) {
-    try {
-        const response = await fetch('https://us-central1-wallofsupport-d9d19.cloudfunctions.net/checkSentiment', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ messageText }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Error in fetching sentiment data');
-        }
-
-        const result = await response.json();
-        return result.sentimentScore;
-    } catch (error) {
-        console.error('Error checking sentiment:', error);
-        return 0;  // Default to neutral sentiment in case of error
-    }
 }
 
 
