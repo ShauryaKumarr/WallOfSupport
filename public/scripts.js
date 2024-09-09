@@ -1,9 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-// If you enabled Analytics in your project, add the Firebase SDK for Google Analytics
+
 
 // Add Firebase products that you want to use
-
 import {getDatabase, ref, set, onValue} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCyEqGnnMr0IcvrPs_PcLxvb9Nw1ozE_Xc",
@@ -18,6 +18,45 @@ const firebaseConfig = {
 // Initialize Firebasex
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+
+async function checkToxicity(messageText) {
+  const apiKey = 'AIzaSyDmjMjPEkQ7D6wbDjflwlzvuhakmXqHExA';
+  const url = `https://commentanalyzer.googleapis.com/v1alpha1/comments:analyze?key=${apiKey}`;
+
+  const requestBody = {
+    comment: { text: messageText },
+    languages: ['en'],
+    requestedAttributes: { TOXICITY: {} },
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      console.error("Error in response from Perspective API", response.statusText);
+      return null;
+    }
+
+    const result = await response.json();
+
+    // Check if the result contains the expected attributeScores
+    if (!result.attributeScores || !result.attributeScores.TOXICITY) {
+      console.error('Unexpected response format:', result);
+      return null;
+    }
+
+    const toxicityScore = result.attributeScores.TOXICITY.summaryScore.value;
+    return toxicityScore;
+  } catch (error) {
+    console.error('Error checking toxicity:', error);
+    return null;
+  }
+}
+
 
 const countries = [
   { code: "AF", name: "Afghanistan" },
@@ -300,6 +339,8 @@ function showCommentForm() {
   const addCommentButton = document.getElementById("addCommentButton");
   addCommentButton.style.display = "none";
 }
+
+
 function hideCommentForm() {
   const commentForm = document.getElementById("wall");
   commentForm.style.display = "none";
@@ -314,7 +355,6 @@ async function addMessage() {
   const locationInput = document.getElementById("locationInput");
 
   const messageId = `message-${Date.now()}`; // Unique ID
-
   let nameText = nameInput.value.trim();
   const messageText = messageInput.value.trim();
 
@@ -331,35 +371,50 @@ async function addMessage() {
   }
 
   // Prevent empty comments and enforce a character limit
-  const characterLimit = 200; // Set the character limit here
+  const characterLimit = 200;
   if (!messageText) {
     alert("Please write a message before posting.");
     return;
   } else if (messageText.length > characterLimit) {
-    alert(
-      `Your message is too long. Please keep it under ${characterLimit} characters.`
-    );
+    alert(`Your message is too long. Please keep it under ${characterLimit} characters.`);
     return;
   }
 
-  set(ref(database, 'messages/' + messageId), {
-    username: nameText,
-    message: messageText,
-    location: locationInput.value
-  });
+  // Check toxicity of the message
+  const toxicityScore = await checkToxicity(messageText);
+  if (toxicityScore === null) {
+    alert("There was an error checking the toxicity of the message. Please try again.");
+    return;
+  }
 
+  // Define the toxicity threshold (e.g., 0.7 for moderate filtering)
+  const toxicityThreshold = 0.3;
+  if (toxicityScore >= toxicityThreshold) {
+    alert("Your message is too toxic and cannot be posted.");
+    return;
+  } else {
+    set(ref(database, 'messages/' + messageId), {
+      username: nameText,
+      message: messageText,
+      location: locationInput.value,
+      date,
+      time,
+    });
+  }
+
+  // Clear input fields
   nameInput.value = "";
   messageInput.value = "";
   locationInput.value = "";
 
-  
-  // Make the message draggable
-  makeDraggable(newMessage);
+
 }
+
+
 
 function displayMessages() {
     const messagesContainer = document.getElementById("messages");
-    messagesContainer.innerHTML = ""; // Clear existing messages
+    messagesContainer.innerHTML = ""; 
   
     const messagesRef = ref(database, 'messages/');
     onValue(messagesRef, (snapshot) => {
@@ -414,7 +469,8 @@ function displayMessages() {
       }
     });
   }
-  
+
+// random positioning coordinates for message
 function getRandomPosition() {
   const wall = document.getElementById("messages");
   const wallWidth = wall.scrollWidth;
@@ -443,6 +499,7 @@ function incrementHeartCount(heartReaction) {
   heartReaction.onclick = null;
 }
 
+// message initially appears at random location on board
 function showRandomQuote() {
   const quoteContainer = document.getElementById("quoteContainer");
   quoteContainer.textContent =
@@ -454,6 +511,7 @@ function showRandomQuote() {
   }, 10000);
 }
 
+// allows user to drag comments through click input
 function makeDraggable(element) {
   element.setAttribute("draggable", true);
   element.addEventListener(
