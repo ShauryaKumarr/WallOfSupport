@@ -57,6 +57,36 @@ async function checkToxicity(messageText) {
   }
 }
 
+// Function to check message sentiment using Google Natural Language API
+async function checkSentiment(messageText) {
+  const apiKey = 'AIzaSyBi99QWzO1rSSzzGX0LeTO9kc2U1DPlFCQ'; // Your Natural Language API key
+  const url = `https://language.googleapis.com/v1/documents:analyzeSentiment?key=${apiKey}`;
+
+  const requestBody = {
+    document: {
+      type: "PLAIN_TEXT",
+      content: messageText,
+    },
+    encodingType: "UTF8",
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+    const sentimentScore = data.documentSentiment.score;
+
+    // Return sentiment score; positive, neutral (0 or greater) is acceptable
+    return sentimentScore;
+  } catch (error) {
+    console.error('Error checking sentiment:', error);
+    return null;
+  }
+}
 
 const countries = [
   { code: "AF", name: "Afghanistan" },
@@ -387,10 +417,20 @@ async function addMessage() {
     return;
   }
 
+  // Check sentiment of the message
+  const sentimentScore = await checkSentiment(messageText);
+  if (sentimentScore === null) {
+    alert("There was an error checking the sentiment of the message. Please try again.");
+    return;
+  }
+
   // Define the toxicity threshold (e.g., 0.7 for moderate filtering)
-  const toxicityThreshold = 0.3;
+  const toxicityThreshold = 0.4;
   if (toxicityScore >= toxicityThreshold) {
     alert("Your message is too toxic and cannot be posted.");
+    return;
+  } else if (sentimentScore < 0) {
+    alert("Your message is too negative and cannot be posted");
     return;
   } else {
     set(ref(database, 'messages/' + messageId), {
@@ -407,68 +447,75 @@ async function addMessage() {
   messageInput.value = "";
   locationInput.value = "";
 
-
 }
 
-
-
 function displayMessages() {
-    const messagesContainer = document.getElementById("messages");
-    messagesContainer.innerHTML = ""; 
-  
-    const messagesRef = ref(database, 'messages/');
-    onValue(messagesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        Object.keys(data).forEach((messageId) => {
-          const messageData = data[messageId];
-  
-          const newMessage = document.createElement("div");
-          newMessage.className = "message";
-          newMessage.id = messageId;
-  
-          const textElement = document.createElement("p");
-          textElement.textContent = messageData.message;
-          newMessage.appendChild(textElement);
-  
-          const dateTimeElement = document.createElement("div");
-          dateTimeElement.className = "date-time";
-          const nameElement = document.createElement("p");
-          nameElement.textContent = messageData.username || "Anonymous";
-          const dateElement = document.createElement("p");
-          dateElement.textContent = new Date(parseInt(messageId.split('-')[1])).toLocaleString(); // Assuming messageId is based on timestamp
-          dateTimeElement.appendChild(nameElement);
-          dateTimeElement.appendChild(dateElement);
-          newMessage.appendChild(dateTimeElement);
-  
-          if (messageData.location) {
-            const flag = document.createElement("img");
-            flag.className = "flag";
-            flag.src = `https://flagcdn.com/25x18/${messageData.location}.png`;
-            flag.alt = messageData.location;
-            newMessage.appendChild(flag);
-          }
-  
-          const reactions = document.createElement("div");
-          reactions.className = "reactions";
-          const heartReaction = document.createElement("button");
-          heartReaction.className = "reaction";
-          heartReaction.innerHTML =
-            '<span>❤️</span> <span class="heart-count">0</span>';
-          heartReaction.addEventListener("click", () => incrementHeartCount(heartReaction));
-          reactions.appendChild(heartReaction);
-  
-          newMessage.appendChild(reactions);
-  
-          // Make the message draggable
-          makeDraggable(newMessage);
-  
-          // Position the message randomly (optional)
-          positionAndAppendMessage(newMessage);
-        });
-      }
-    });
-  }
+  const messagesContainer = document.getElementById("messages");
+  messagesContainer.innerHTML = ""; // Clear all messages before rendering new ones
+
+  const messagesRef = ref(database, 'messages/');
+  onValue(messagesRef, (snapshot) => {
+    const data = snapshot.val();
+    
+    if (data) {
+      Object.keys(data).forEach((messageId) => {
+        const messageData = data[messageId];
+
+        const existingMessage = document.getElementById(messageId);
+        if (existingMessage) {
+          // If message is already present in the DOM, skip adding it again
+          return;
+        }
+
+        const newMessage = document.createElement("div");
+        newMessage.className = "message";
+        newMessage.id = messageId;
+
+        const textElement = document.createElement("p");
+        textElement.textContent = messageData.message;
+        newMessage.appendChild(textElement);
+
+        const dateTimeElement = document.createElement("div");
+        dateTimeElement.className = "date-time";
+        const nameElement = document.createElement("p");
+        nameElement.textContent = messageData.username || "Anonymous";
+        const dateElement = document.createElement("p");
+        dateElement.textContent = new Date(parseInt(messageId.split('-')[1])).toLocaleString();
+        dateTimeElement.appendChild(nameElement);
+        dateTimeElement.appendChild(dateElement);
+        newMessage.appendChild(dateTimeElement);
+
+        if (messageData.location) {
+          const flag = document.createElement("img");
+          flag.className = "flag";
+          flag.src = `https://flagcdn.com/25x18/${messageData.location}.png`;
+          flag.alt = messageData.location;
+          newMessage.appendChild(flag);
+        }
+
+        const reactions = document.createElement("div");
+        reactions.className = "reactions";
+        const heartReaction = document.createElement("button");
+        heartReaction.className = "reaction";
+        heartReaction.innerHTML = '<span>❤️</span> <span class="heart-count">0</span>';
+        heartReaction.addEventListener("click", () => incrementHeartCount(heartReaction));
+        reactions.appendChild(heartReaction);
+
+        newMessage.appendChild(reactions);
+
+        // Make the message draggable
+        makeDraggable(newMessage);
+
+        // Position the message randomly (optional)
+        positionAndAppendMessage(newMessage);
+
+        // Append the message to the container
+        messagesContainer.appendChild(newMessage);
+      });
+    }
+  });
+}
+
 
 // random positioning coordinates for message
 function getRandomPosition() {
@@ -511,7 +558,7 @@ function showRandomQuote() {
   }, 10000);
 }
 
-// allows user to drag comments through click input
+// Allows user to drag comments through click input
 function makeDraggable(element) {
   element.setAttribute("draggable", true);
   element.addEventListener(
@@ -522,7 +569,21 @@ function makeDraggable(element) {
     },
     false
   );
+
+  // On load, position the element based on saved positions in localStorage
+  const savedPosition = localStorage.getItem(element.id);
+  if (savedPosition) {
+    const { x, y } = JSON.parse(savedPosition);
+    element.style.left = `${x}px`;
+    element.style.top = `${y}px`;
+  } else {
+    // Randomly position if no saved position exists
+    const { x, y } = getRandomPosition();
+    element.style.left = `${x}px`;
+    element.style.top = `${y}px`;
+  }
 }
+
 
 function drag_start(event) {
   var style = window.getComputedStyle(event.target, null);
@@ -535,16 +596,26 @@ function drag_start(event) {
   );
 }
 
+// Store dragged message positions in localStorage
 function drop(event) {
   var offset = event.dataTransfer.getData("text/plain").split(",");
   var element = document.getElementById(
     event.dataTransfer.getData("dragged-id")
   );
-  element.style.left = event.clientX + parseInt(offset[0], 10) + "px";
-  element.style.top = event.clientY + parseInt(offset[1], 10) + "px";
+  const newX = event.clientX + parseInt(offset[0], 10);
+  const newY = event.clientY + parseInt(offset[1], 10);
+  
+  element.style.left = newX + "px";
+  element.style.top = newY + "px";
   event.preventDefault();
+
+  // Save the new position in localStorage
+  const position = { x: newX, y: newY };
+  localStorage.setItem(element.id, JSON.stringify(position));
+
   return false;
 }
+
 
 function drag_over(event) {
   event.preventDefault();
