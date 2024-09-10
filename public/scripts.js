@@ -19,74 +19,28 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
+// Check toxicity using Cloud Function
 async function checkToxicity(messageText) {
-  const apiKey = 'AIzaSyDmjMjPEkQ7D6wbDjflwlzvuhakmXqHExA';
-  const url = `https://commentanalyzer.googleapis.com/v1alpha1/comments:analyze?key=${apiKey}`;
-
-  const requestBody = {
-    comment: { text: messageText },
-    languages: ['en'],
-    requestedAttributes: { TOXICITY: {} },
-  };
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      console.error("Error in response from Perspective API", response.statusText);
-      return null;
-    }
-
-    const result = await response.json();
-
-    // Check if the result contains the expected attributeScores
-    if (!result.attributeScores || !result.attributeScores.TOXICITY) {
-      console.error('Unexpected response format:', result);
-      return null;
-    }
-
-    const toxicityScore = result.attributeScores.TOXICITY.summaryScore.value;
-    return toxicityScore;
-  } catch (error) {
-    console.error('Error checking toxicity:', error);
-    return null;
-  }
+  const response = await fetch('https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkToxicity', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messageText }),
+  });
+  const toxicityScore = await response.json();
+  return toxicityScore;
 }
 
-// Function to check message sentiment using Google Natural Language API
+// Check sentiment using Cloud Function
 async function checkSentiment(messageText) {
-  const apiKey = 'AIzaSyBi99QWzO1rSSzzGX0LeTO9kc2U1DPlFCQ'; // Your Natural Language API key
-  const url = `https://language.googleapis.com/v1/documents:analyzeSentiment?key=${apiKey}`;
-
-  const requestBody = {
-    document: {
-      type: "PLAIN_TEXT",
-      content: messageText,
-    },
-    encodingType: "UTF8",
-  };
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    });
-
-    const data = await response.json();
-    const sentimentScore = data.documentSentiment.score;
-
-    // Return sentiment score; positive, neutral (0 or greater) is acceptable
-    return sentimentScore;
-  } catch (error) {
-    console.error('Error checking sentiment:', error);
-    return null;
-  }
+  const response = await fetch('https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkSentiment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messageText }),
+  });
+  const sentimentScore = await response.json();
+  return sentimentScore;
 }
+
 
 const countries = [
   { code: "AF", name: "Afghanistan" },
@@ -427,6 +381,7 @@ async function addMessage() {
   // Define the toxicity threshold (e.g., 0.7 for moderate filtering)
   const toxicityThreshold = 0.4;
   if (toxicityScore >= toxicityThreshold) {
+
     alert("Your message is too toxic and cannot be posted.");
     return;
   } else if (sentimentScore < 0) {
