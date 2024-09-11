@@ -249,3 +249,10 @@ button:hover {
     90% { opacity: 1; }
     100% { opacity: 0; }
 }
+
+#charCount {
+    color: #8b4513; /* Match the design */
+    font-size: 0.9em;
+    margin-top: 5px;
+  }
+  

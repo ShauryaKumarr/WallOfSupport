@@ -295,6 +295,19 @@ const countries = [
 const quotes = [
   "Believe you can and you're halfway there. - Theodore Roosevelt",
   "The only limit to our realization of tomorrow is our doubts of today. - Franklin D. Roosevelt",
+  "When you feel like giving up, remember why you held on for so long in the first place.",
+  "You are never too far gone to be loved and cherished.",
+  "The struggle you're in today is developing the strength you need for tomorrow. - Robert Tew",
+  "Do not fear failure but rather fear not trying. - Roy T. Bennett",
+  "You are loved, not because you are perfect, but because you are enough.",
+  "Every setback is a setup for a comeback. - Joel Osteen",
+  "Strength doesn't come from what you can do. It comes from overcoming the things you once thought you couldn't. - Rikki Rogers",
+  "You are stronger than you think, braver than you believe, and loved more than you know.",
+  "It's okay to not be okay. What matters is that you keep going.",
+  "Success is not final, failure is not fatal: It is the courage to continue that counts. - Winston Churchill",
+  "You are worthy of love, no matter where you are on your journey.",
+  "Never give up on a dream just because of the time it will take to accomplish it. The time will pass anyway. - Earl Nightingale",
+  "Sometimes, the bravest thing you can do is just keep going.",
 ];
 
 window.onload = () => {
@@ -308,13 +321,35 @@ window.onload = () => {
 
   showRandomQuote();
   displayMessages();
+  
   const addCommentButton = document.getElementById("addCommentButton");
   const backButton = document.getElementById("backButton");
   const postButton = document.getElementById("postButton");
-
+  
+  // Add comment button listener
   addCommentButton.addEventListener("click", showCommentForm);
   backButton.addEventListener("click", hideCommentForm);
   postButton.addEventListener("click", addMessage);
+
+  // Set up character count
+  const messageInput = document.getElementById("messageInput");
+  const charCount = document.getElementById("charCount");
+  const characterLimit = 250;  // Set your character limit here
+
+  // Update the character count when typing
+  messageInput.addEventListener("input", function () {
+    const currentLength = messageInput.value.length;
+    charCount.textContent = `${currentLength}/${characterLimit} characters`;
+
+    // Prevent typing beyond the limit
+    if (currentLength > characterLimit) {
+      messageInput.value = messageInput.value.substring(0, characterLimit);
+      charCount.textContent = `${characterLimit}/${characterLimit} characters`;
+    }
+  });
+
+  // Initially update the character count
+  charCount.textContent = `0/${characterLimit} characters`;
 };
 
 function showCommentForm() {
@@ -355,7 +390,7 @@ async function addMessage() {
   }
 
   // Prevent empty comments and enforce a character limit
-  const characterLimit = 200;
+  const characterLimit = 250;
   if (!messageText) {
     alert("Please write a message before posting.");
     return;
@@ -381,7 +416,6 @@ async function addMessage() {
   // Define the toxicity threshold (e.g., 0.7 for moderate filtering)
   const toxicityThreshold = 0.4;
   if (toxicityScore >= toxicityThreshold) {
-
     alert("Your message is too toxic and cannot be posted.");
     return;
   } else if (sentimentScore < 0) {
@@ -395,14 +429,13 @@ async function addMessage() {
       date,
       time,
       likes: 0,  // Add a likes field initialized to 0
-  });
+    });
   }
 
   // Clear input fields
   nameInput.value = "";
   messageInput.value = "";
   locationInput.value = "";
-
 }
 
 function displayMessages() {
