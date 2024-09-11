@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/fireba
 
 
 // Add Firebase products that you want to use
-import {getDatabase, ref, set, onValue} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+import {getDatabase, ref, set, onValue, runTransaction} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -394,7 +394,8 @@ async function addMessage() {
       location: locationInput.value,
       date,
       time,
-    });
+      likes: 0,  // Add a likes field initialized to 0
+  });
   }
 
   // Clear input fields
@@ -410,66 +411,65 @@ function displayMessages() {
 
   const messagesRef = ref(database, 'messages/');
   onValue(messagesRef, (snapshot) => {
-    const data = snapshot.val();
-    
-    if (data) {
-      Object.keys(data).forEach((messageId) => {
-        const messageData = data[messageId];
+      const data = snapshot.val();
 
-        const existingMessage = document.getElementById(messageId);
-        if (existingMessage) {
-          // If message is already present in the DOM, skip adding it again
-          return;
-        }
+      if (data) {
+          Object.keys(data).forEach((messageId) => {
+              const messageData = data[messageId];
 
-        const newMessage = document.createElement("div");
-        newMessage.className = "message";
-        newMessage.id = messageId;
+              const existingMessage = document.getElementById(messageId);
+              if (existingMessage) {
+                  // If message is already present in the DOM, skip adding it again
+                  return;
+              }
 
-        const textElement = document.createElement("p");
-        textElement.textContent = messageData.message;
-        newMessage.appendChild(textElement);
+              const newMessage = document.createElement("div");
+              newMessage.className = "message";
+              newMessage.id = messageId;
 
-        const dateTimeElement = document.createElement("div");
-        dateTimeElement.className = "date-time";
-        const nameElement = document.createElement("p");
-        nameElement.textContent = messageData.username || "Anonymous";
-        const dateElement = document.createElement("p");
-        dateElement.textContent = new Date(parseInt(messageId.split('-')[1])).toLocaleString();
-        dateTimeElement.appendChild(nameElement);
-        dateTimeElement.appendChild(dateElement);
-        newMessage.appendChild(dateTimeElement);
+              const textElement = document.createElement("p");
+              textElement.textContent = messageData.message;
+              newMessage.appendChild(textElement);
 
-        if (messageData.location) {
-          const flag = document.createElement("img");
-          flag.className = "flag";
-          flag.src = `https://flagcdn.com/25x18/${messageData.location}.png`;
-          flag.alt = messageData.location;
-          newMessage.appendChild(flag);
-        }
+              const dateTimeElement = document.createElement("div");
+              dateTimeElement.className = "date-time";
+              const nameElement = document.createElement("p");
+              nameElement.textContent = messageData.username || "Anonymous";
+              const dateElement = document.createElement("p");
+              dateElement.textContent = new Date(parseInt(messageId.split('-')[1])).toLocaleString();
+              dateTimeElement.appendChild(nameElement);
+              dateTimeElement.appendChild(dateElement);
+              newMessage.appendChild(dateTimeElement);
 
-        const reactions = document.createElement("div");
-        reactions.className = "reactions";
-        const heartReaction = document.createElement("button");
-        heartReaction.className = "reaction";
-        heartReaction.innerHTML = '<span>❤️</span> <span class="heart-count">0</span>';
-        heartReaction.addEventListener("click", () => incrementHeartCount(heartReaction));
-        reactions.appendChild(heartReaction);
+              if (messageData.location) {
+                  const flag = document.createElement("img");
+                  flag.className = "flag";
+                  flag.src = `https://flagcdn.com/25x18/${messageData.location}.png`;
+                  flag.alt = messageData.location;
+                  newMessage.appendChild(flag);
+              }
 
-        newMessage.appendChild(reactions);
+              const reactions = document.createElement("div");
+              reactions.className = "reactions";
 
-        // Make the message draggable
-        makeDraggable(newMessage);
+              // Show likes from the database
+              const heartReaction = document.createElement("button");
+              heartReaction.className = "reaction";
+              heartReaction.innerHTML = `<span>❤️</span> <span class="heart-count">${messageData.likes || 0}</span>`;
 
-        // Position the message randomly (optional)
-        positionAndAppendMessage(newMessage);
+              heartReaction.addEventListener("click", () => incrementHeartCount(heartReaction, messageId));
 
-        // Append the message to the container
-        messagesContainer.appendChild(newMessage);
-      });
-    }
+              reactions.appendChild(heartReaction);
+              newMessage.appendChild(reactions);
+
+              makeDraggable(newMessage);
+              positionAndAppendMessage(newMessage);
+              messagesContainer.appendChild(newMessage);
+          });
+      }
   });
 }
+
 
 
 // random positioning coordinates for message
@@ -493,13 +493,37 @@ function positionAndAppendMessage(message) {
   messagesContainer.appendChild(message);
 }
 
-// message can only be liked once daily
-function incrementHeartCount(heartReaction) {
-  const heartCount = heartReaction.querySelector(".heart-count");
-  let count = parseInt(heartCount.innerHTML);
-  heartCount.innerHTML = count + 1;
-  heartReaction.onclick = null;
+function incrementHeartCount(heartReaction, messageId) {
+  const userId = localStorage.getItem("userId") || Date.now();  // Track user with a simple unique identifier
+  localStorage.setItem("userId", userId);
+
+  const likedMessages = JSON.parse(localStorage.getItem("likedMessages")) || [];
+
+  // Prevent liking the same message multiple times
+  if (likedMessages.includes(messageId)) {
+    alert("You've already liked this message.");
+    return;
+  }
+
+  const messageRef = ref(database, `messages/${messageId}/likes`);
+
+  // Use a transaction to increment likes safely
+  runTransaction(messageRef, (currentLikes) => {
+    return (currentLikes || 0) + 1;
+  }).then(() => {
+    // Store this message as liked in localStorage
+    likedMessages.push(messageId);
+    localStorage.setItem("likedMessages", JSON.stringify(likedMessages));
+
+    // Update the like count visually
+    const heartCount = heartReaction.querySelector(".heart-count");
+    heartCount.innerHTML = parseInt(heartCount.innerHTML) + 1;
+  }).catch((error) => {
+    console.error('Transaction failed:', error);
+  });
 }
+
+
 
 // message initially appears at random location on board
 function showRandomQuote() {
