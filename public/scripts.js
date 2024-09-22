@@ -310,6 +310,7 @@ const quotes = [
   "Sometimes, the bravest thing you can do is just keep going.",
 ];
 
+
 window.onload = () => {
   const locationInput = document.getElementById("locationInput");
   countries.forEach((country) => {
@@ -475,12 +476,12 @@ function displayMessages() {
               newMessage.appendChild(dateTimeElement);
 
               if (messageData.location) {
-                  const flag = document.createElement("img");
+                const flag = document.createElement("img");
                   flag.className = "flag";
-                  flag.src = `https://flagcdn.com/25x18/${messageData.location}.png`;
                   flag.alt = messageData.location;
+                  flag.src = `https://flagcdn.com/24x18/${messageData.location}.png`;
                   newMessage.appendChild(flag);
-              }
+            }
 
               const reactions = document.createElement("div");
               reactions.className = "reactions";
@@ -502,7 +503,6 @@ function displayMessages() {
       }
   });
 }
-
 
 
 // random positioning coordinates for message
