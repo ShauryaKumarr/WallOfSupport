@@ -41,6 +41,9 @@ async function checkSentiment(messageText) {
   return sentimentScore;
 }
 
+// Add these constants at the top of your file, after other imports
+const SAFE_ZONE_WIDTH = 600;  // Adjust based on your central island width
+const SAFE_ZONE_HEIGHT = 400; // Adjust based on your central island height
 
 const countries = [
   { code: "AF", name: "Afghanistan" },
@@ -458,65 +461,102 @@ function displayMessages() {
 
   const messagesRef = ref(database, 'messages/');
   onValue(messagesRef, (snapshot) => {
-      const data = snapshot.val();
+    const data = snapshot.val();
 
-      if (data) {
-          Object.keys(data).forEach((messageId) => {
-              const messageData = data[messageId];
+    if (data) {
+      const messageIds = Object.keys(data);
+      const totalMessages = messageIds.length;
+      const batchSize = 20; // Render messages in batches of 20
 
-              const existingMessage = document.getElementById(messageId);
-              if (existingMessage) {
-                  // If message is already present in the DOM, skip adding it again
-                  return;
-              }
+      function renderBatch(startIndex) {
+        const endIndex = Math.min(startIndex + batchSize, totalMessages);
+        
+        for (let i = startIndex; i < endIndex; i++) {
+          const messageId = messageIds[i];
+          const messageData = data[messageId];
+          renderMessage(messageId, messageData);
+        }
 
-              const newMessage = document.createElement("div");
-              newMessage.className = "message";
-              newMessage.id = messageId;
-
-              const textElement = document.createElement("p");
-              textElement.textContent = messageData.message;
-              newMessage.appendChild(textElement);
-
-              const dateTimeElement = document.createElement("div");
-              dateTimeElement.className = "date-time";
-              const nameElement = document.createElement("p");
-              nameElement.textContent = messageData.username || "Anonymous";
-              const dateElement = document.createElement("p");
-              dateElement.textContent = new Date(parseInt(messageId.split('-')[1])).toLocaleString();
-              dateTimeElement.appendChild(nameElement);
-              dateTimeElement.appendChild(dateElement);
-              newMessage.appendChild(dateTimeElement);
-
-              if (messageData.location) {
-                const flag = document.createElement("img");
-                  flag.className = "flag";
-                  flag.alt = messageData.location;
-                  flag.src = `https://flagcdn.com/24x18/${messageData.location}.png`;
-                  newMessage.appendChild(flag);
-            }
-
-              const reactions = document.createElement("div");
-              reactions.className = "reactions";
-
-              // Show likes from the database
-              const heartReaction = document.createElement("button");
-              heartReaction.className = "reaction";
-              heartReaction.innerHTML = `<span>❤️</span> <span class="heart-count">${messageData.likes || 0}</span>`;
-
-              heartReaction.addEventListener("click", () => incrementHeartCount(heartReaction, messageId));
-
-              reactions.appendChild(heartReaction);
-              newMessage.appendChild(reactions);
-
-              makeDraggable(newMessage);
-              positionAndAppendMessage(newMessage);
-              messagesContainer.appendChild(newMessage);
-          });
+        if (endIndex < totalMessages) {
+          // Schedule the next batch
+          setTimeout(() => renderBatch(endIndex), 100);
+        }
       }
+
+      renderBatch(0);
+    }
   });
 }
 
+function renderMessage(messageId, messageData) {
+  const messagesContainer = document.getElementById("messages");
+  const existingMessage = document.getElementById(messageId);
+  if (existingMessage) {
+    // If message is already present in the DOM, update it instead of re-creating
+    updateExistingMessage(existingMessage, messageData);
+    return;
+  }
+
+  const newMessage = createMessageElement(messageId, messageData);
+  makeDraggable(newMessage);
+  positionAndAppendMessage(newMessage);
+  messagesContainer.appendChild(newMessage);
+}
+
+function createMessageElement(messageId, messageData) {
+  const newMessage = document.createElement("div");
+  newMessage.className = "message";
+  newMessage.id = messageId;
+
+  const textElement = document.createElement("p");
+  textElement.textContent = messageData.message;
+  newMessage.appendChild(textElement);
+
+  const dateTimeElement = document.createElement("div");
+  dateTimeElement.className = "date-time";
+  const nameElement = document.createElement("p");
+  nameElement.textContent = messageData.username || "Anonymous";
+  const dateElement = document.createElement("p");
+  dateElement.textContent = new Date(parseInt(messageId.split('-')[1])).toLocaleString();
+  dateTimeElement.appendChild(nameElement);
+  dateTimeElement.appendChild(dateElement);
+  newMessage.appendChild(dateTimeElement);
+
+  if (messageData.location) {
+    const flag = document.createElement("img");
+      flag.className = "flag";
+      flag.alt = messageData.location;
+      flag.src = `https://flagcdn.com/24x18/${messageData.location}.png`;
+      newMessage.appendChild(flag);
+}
+
+  const reactions = document.createElement("div");
+  reactions.className = "reactions";
+
+  // Show likes from the database
+  const heartReaction = document.createElement("button");
+  heartReaction.className = "reaction";
+  heartReaction.innerHTML = `<span>❤️</span> <span class="heart-count">${messageData.likes || 0}</span>`;
+
+  heartReaction.addEventListener("click", () => incrementHeartCount(heartReaction, messageId));
+
+  reactions.appendChild(heartReaction);
+  newMessage.appendChild(reactions);
+
+  return newMessage;
+}
+
+function updateExistingMessage(messageElement, messageData) {
+  const textElement = messageElement.querySelector("p");
+  textElement.textContent = messageData.message;
+
+  const dateTimeElement = messageElement.querySelector(".date-time");
+  const nameElement = dateTimeElement.querySelector("p:first-child");
+  nameElement.textContent = messageData.username || "Anonymous";
+
+  const heartCount = messageElement.querySelector(".heart-count");
+  heartCount.innerHTML = messageData.likes || 0;
+}
 
 // random positioning coordinates for message
 function getRandomPosition() {
@@ -524,10 +564,42 @@ function getRandomPosition() {
   const wallWidth = wall.scrollWidth;
   const wallHeight = wall.scrollHeight;
 
-  const randomX = Math.floor(Math.random() * (wallWidth - 200));
-  const randomY = Math.floor(Math.random() * (wallHeight - 200));
+  // Increase the number of attempts to find a non-overlapping position
+  const maxAttempts = 50;
+  let attempts = 0;
 
-  return { x: randomX, y: randomY };
+  while (attempts < maxAttempts) {
+    const randomX = Math.floor(Math.random() * (wallWidth - 250));
+    const randomY = Math.floor(Math.random() * (wallHeight - 250));
+
+    const inSafeZoneX = randomX < (wallWidth - SAFE_ZONE_WIDTH) / 2 || randomX > (wallWidth + SAFE_ZONE_WIDTH) / 2;
+    const inSafeZoneY = randomY < SAFE_ZONE_HEIGHT;
+
+    if (inSafeZoneX && inSafeZoneY && !checkOverlap(randomX, randomY)) {
+      return { x: randomX, y: randomY };
+    }
+
+    attempts++;
+  }
+
+  // If no non-overlapping position found, return a position at the bottom of the wall
+  return { x: Math.floor(Math.random() * (wallWidth - 250)), y: wallHeight };
+}
+
+function checkOverlap(x, y) {
+  const messages = document.querySelectorAll(".message");
+  for (const message of messages) {
+    const rect = message.getBoundingClientRect();
+    if (
+      x < rect.right &&
+      x + 250 > rect.left &&
+      y < rect.bottom &&
+      y + 150 > rect.top
+    ) {
+      return true; // Overlap detected
+    }
+  }
+  return false; // No overlap
 }
 
 // set comment to random location initially
@@ -535,8 +607,26 @@ function positionAndAppendMessage(message) {
   const { x, y } = getRandomPosition();
   message.style.left = `${x}px`;
   message.style.top = `${y}px`;
+
   const messagesContainer = document.getElementById("messages");
   messagesContainer.appendChild(message);
+
+  // Dynamically expand page if needed
+  const messageBottom = y + message.offsetHeight;
+  const wall = document.getElementById("messages");
+  const currentHeight = wall.scrollHeight;
+
+  if (messageBottom > currentHeight) {
+    wall.style.height = `${messageBottom + 200}px`; // Expand with a buffer
+  }
+
+  // Dynamically expand page horizontally if needed
+  const messageRight = x + message.offsetWidth;
+  const currentWidth = wall.scrollWidth;
+
+  if (messageRight > currentWidth) {
+    wall.style.width = `${messageRight + 200}px`; // Expand with a buffer
+  }
 }
 
 function incrementHeartCount(heartReaction, messageId) {
@@ -623,12 +713,45 @@ function drag_start(event) {
 // Store dragged message positions in localStorage
 function drop(event) {
   var offset = event.dataTransfer.getData("text/plain").split(",");
-  var element = document.getElementById(
-    event.dataTransfer.getData("dragged-id")
-  );
-  const newX = event.clientX + parseInt(offset[0], 10);
-  const newY = event.clientY + parseInt(offset[1], 10);
+  var element = document.getElementById(event.dataTransfer.getData("dragged-id"));
   
+  let newX = event.clientX + parseInt(offset[0], 10);
+  let newY = event.clientY + parseInt(offset[1], 10);
+
+  const wall = document.getElementById("messages");
+  const wallWidth = wall.scrollWidth;
+
+  // Check if the new position is in the safe zone
+  const inSafeZoneX = newX < (wallWidth - SAFE_ZONE_WIDTH) / 2 || newX > (wallWidth + SAFE_ZONE_WIDTH) / 2;
+  const inSafeZoneY = newY < SAFE_ZONE_HEIGHT;
+
+  if (!inSafeZoneX || !inSafeZoneY) {
+    // If in safe zone, adjust position
+    if (!inSafeZoneX) {
+      newX = newX < (wallWidth - SAFE_ZONE_WIDTH) / 2 ? 
+             (wallWidth - SAFE_ZONE_WIDTH) / 2 - 250 : 
+             (wallWidth + SAFE_ZONE_WIDTH) / 2;
+    }
+    if (!inSafeZoneY) {
+      newY = SAFE_ZONE_HEIGHT;
+    }
+  }
+
+  // Check for overlap with other messages
+  const messages = document.querySelectorAll(".message");
+  messages.forEach(message => {
+    if (message !== element) {
+      const rect = message.getBoundingClientRect();
+      const overlapX = newX < rect.right && newX + 250 > rect.left;
+      const overlapY = newY < rect.bottom && newY + 150 > rect.top;
+      if (overlapX && overlapY) {
+        // Adjust position slightly to avoid overlap
+        newX += 20; // Move to the right
+        newY += 20; // Move down
+      }
+    }
+  });
+
   element.style.left = newX + "px";
   element.style.top = newY + "px";
   event.preventDefault();
@@ -639,6 +762,7 @@ function drop(event) {
 
   return false;
 }
+
 
 
 function drag_over(event) {
