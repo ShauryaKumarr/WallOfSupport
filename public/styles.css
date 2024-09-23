@@ -3,7 +3,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: #F5F5DC; /* Document-like background color */
+    background: #F5F5DC;
     background-size: cover;
     margin: 0;
     padding: 0;
@@ -126,8 +126,8 @@ button:hover {
     position: relative;
     width: 100%;
     background: transparent;
-    overflow: visible; /* Ensure messages don't scroll separately */
-    padding-bottom: 200px; /* Extra space for scrolling */
+    overflow: visible;
+    padding-bottom: 200px;
 }
 
 .message {
@@ -144,14 +144,14 @@ button:hover {
     justify-content: space-between;
     margin: 20px;
     position: absolute;
-    color: #8b4513; /* Change font color */
-    cursor: grab; /* Add move cursor */
+    color: #8b4513;
+    cursor: grab;
     transition: transform 0.2s;
 }
 
 .message:active {
     cursor: grabbing;
-    transform: rotate(0deg); /* Straighten while dragging */
+    transform: rotate(0deg);
 }
 
 .message img {
@@ -163,7 +163,7 @@ button:hover {
 .message:before {
     content: "";
     position: absolute;
-    top: -25px; /* Adjusted thumbtack position */
+    top: -25px;
     left: 45%;
     transform: translateX(-50%);
     width: 40px;
@@ -183,12 +183,11 @@ button:hover {
     max-height: 18px !important;   
 }
 
-
 .message .date-time {
-    font-size: 0.8em; /* Slightly smaller font size */
+    font-size: 0.8em;
     color: #8b4513;
     text-align: right;
-    margin-top: 5px; /* Reduced space */
+    margin-top: 5px;
     position: absolute;
     bottom: 5px;
     right: 5px;
@@ -233,15 +232,15 @@ button:hover {
 #quoteContainer {
     width: 80%;
     max-width: 600px;
-    color: rgba(139, 69, 19, 0.6); /* Translucent text color */
+    color: rgba(139, 69, 19, 0.6);
     font-size: 1.2em;
     text-align: center;
     margin-top: -20px;
     margin-bottom: 20px;
     font-style: italic;
     font-family: 'Raleway', sans-serif;
-    animation: fadeInOut 10s infinite; /* Fade in and out animation */
-    animation-delay: 0s; /* Start animation immediately */
+    animation: fadeInOut 10s infinite;
+    animation-delay: 0s;
 }
 
 @keyframes fadeInOut {
@@ -252,7 +251,136 @@ button:hover {
 }
 
 #charCount {
-    color: #8b4513; /* Match the design */
+    color: #8b4513;
     font-size: 0.9em;
     margin-top: 5px;
+}
+
+/* Info Icon Style */
+#infoIcon {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+#infoIcon i {
+    font-size: 24px;
+    cursor: pointer;
+    color: #333;
+    transition: color 0.3s;
+}
+
+#infoIcon:hover i {
+    color: #ff6347;
+}
+
+/* Updated styles for the hover text */
+#infoIcon .hover-text {
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(255, 248, 220, 0.9);
+    color: #8b4513;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    margin-right: 0px; /* Added negative margin to bring text closer */
+}
+
+#infoIcon:hover .hover-text {
+    opacity: 1;
+}
+
+/* Footer Styles */
+#footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #d2691e;
+    color: white;
+    text-align: center;
+    padding: 5px 0; /* Reduced from 8px */
+    z-index: 100;
+}
+
+.social-icons {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    gap: 10px; /* Further reduced gap */
+    padding: 0;
+    margin: 0;
+}
+
+.social-icons li {
+    display: inline;
+}
+
+.social-icons a {
+    color: white;
+    font-size: 20px; /* Reduced from 24px */
+    transition: color 0.3s ease;
+}
+
+.social-icons a:hover {
+    color: #ff6347;
+}
+
+#footer p {
+    margin: 5px 0 0; /* Reduced from 10px */
+    font-size: 12px; /* Reduced from 14px */
+}
+
+#footer p a {
+    color: white;
+    text-decoration: underline;
+}
+
+#footer p a:hover {
+    color: #ff6347;
+}
+
+/* Popup styling */
+.popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #ffffe0;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+.popup button {
+    margin-top: 10px;
+    background-color: #ff6347;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.popup button:hover {
+    background-color: #e5533d;
+}
+
+/* New styling for popup title */
+.popup h3 {
+    margin-bottom: 10px;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #8b4513;
+    text-align: center;
 }

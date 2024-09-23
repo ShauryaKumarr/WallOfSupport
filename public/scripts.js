@@ -331,25 +331,38 @@ window.onload = () => {
   addCommentButton.addEventListener("click", showCommentForm);
   backButton.addEventListener("click", hideCommentForm);
   postButton.addEventListener("click", addMessage);
+  
+  // Add event listener for info icon
+  const infoIcon = document.getElementById("infoIcon");
+  const closePopupButton = document.getElementById("closeInfoPopup");
 
-  // Set up character count
+  // Add hover effect to info icon
+  infoIcon.addEventListener("mouseenter", () => {
+    infoIcon.style.color = '#ff6347';
+  });
+  infoIcon.addEventListener("mouseleave", () => {
+    infoIcon.style.color = '#333'; // Reset back to default
+  });
+
+  // Event listener for toggling the popup
+  infoIcon.addEventListener("click", toggleInfoPopup);
+
+  closePopupButton.addEventListener("click", toggleInfoPopup);
+
   const messageInput = document.getElementById("messageInput");
   const charCount = document.getElementById("charCount");
-  const characterLimit = 250;  // Set your character limit here
+  const characterLimit = 250;
 
-  // Update the character count when typing
   messageInput.addEventListener("input", function () {
     const currentLength = messageInput.value.length;
     charCount.textContent = `${currentLength}/${characterLimit} characters`;
 
-    // Prevent typing beyond the limit
     if (currentLength > characterLimit) {
       messageInput.value = messageInput.value.substring(0, characterLimit);
       charCount.textContent = `${characterLimit}/${characterLimit} characters`;
     }
   });
 
-  // Initially update the character count
   charCount.textContent = `0/${characterLimit} characters`;
 };
 
@@ -557,7 +570,6 @@ function incrementHeartCount(heartReaction, messageId) {
 }
 
 
-
 // message initially appears at random location on board
 function showRandomQuote() {
   const quoteContainer = document.getElementById("quoteContainer");
@@ -636,3 +648,12 @@ function drag_over(event) {
 
 document.body.addEventListener("dragover", drag_over, false);
 document.body.addEventListener("drop", drop, false);
+
+function toggleInfoPopup() {
+  const popup = document.getElementById("infoPopup");
+  if (popup.style.display === "none" || popup.style.display === "") {
+    popup.style.display = "block";
+  } else {
+    popup.style.display = "none";
+  }
+}

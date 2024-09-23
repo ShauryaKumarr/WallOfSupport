@@ -9,6 +9,11 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
+    <!-- Add Font Awesome for the info icon -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
   </head>
   <body>
     <div id="header">
@@ -16,6 +21,11 @@
         Wall of Support
         <img src="assets/globe.png" alt="Peace Icon" class="symbol" />
       </h1>
+      <!-- Add the info icon -->
+      <div id="infoIcon">
+        <i class="fas fa-circle-info"></i>
+        <span class="hover-text">See Project Statement</span>
+      </div>
       <h2>Everyone needs a little hand sometimes.</h2>
       <p>
         Leave a comment to lift someone's spirit and help grow our wall of
@@ -41,8 +51,55 @@
         <button id="postButton">Post</button>
       </div>
     </div>
+    
+    <!-- Add the info popup -->
+    <div id="infoPopup" class="popup">
+      <h3>Project Statement</h3>
+      <p>
+        Welcome to the Wall of Support! My name is Shaurya Kumar, and I started the journey
+        of creating this project at the beginning of June. While I initially started this project
+        to teach myself about API usage and Google's Firebase, I decided to make this educational
+        project a meaningful one by creating a platform where people can come together to uplift each other.
+      </p>
+      <p>
+        I think in today's world, especially with the advent of social media and the internet, it's easy to get caught 
+        up in the negativity that surrounds us. We let race disconnect us, religion separate us, politics divide us, 
+        and let wealth classify us, and everyday, instead of coming together, we let these differences strain our relationships
+        with one another.
+      </p>
+      <p>
+        This is why I created the Wall of Support. I want this website to be a beacon of positivity in a world that 
+        currently seems to be becoming more and more divided. I want to remind people that while we may be different, we are all connected, 
+        we are all human, and we all deserve to be treated with kindness and respect.
+      </p>
+      <p>
+        There are many people in this world who are currently struggling, and whether you are here to share encouragement 
+        or receive some words of support, I hope this website can be a place of positivity in a world that needs it. 
+        Thank you for visiting, and I hope you find something here that you can take with you!
+      </p>
+      <p>- Shaurya Kumar</p>
+      <button id="closeInfoPopup">Close</button>
+    </div>
+
     <div id="quoteContainer"></div>
     <div id="messages"></div>
+
+    <!-- Updated Footer -->
+    <footer id="footer">
+      <p>© 2024 Shaurya Kumar | For suggestions, email me at <a href="mailto:shauryakumar1709@gmail.com">shauryakumar1709@gmail.com</a></p>
+      <p>Follow and connect with me on my socials!:</p>
+      <ul class="social-icons">
+        <li>
+          <a href="https://www.instagram.com/shauryakumar._/" class="instagram"><i class="fab fa-instagram"></i></a>
+        </li>
+        <li>
+          <a href="https://github.com/ShauryaKumarr" class="github"><i class="fab fa-github"></i></a>
+        </li>
+        <li>
+          <a href="https://linkedin.com/in/shauryak" class="linkedin"><i class="fab fa-linkedin"></i></a>
+        </li>
+      </ul>
+    </footer>
 
     <script type="module" src="scripts.js"></script>
   </body>
