@@ -577,19 +577,23 @@ function positionAndAppendMessage(message) {
 
   // Dynamically expand page if needed
   const messageBottom = y + message.offsetHeight;
+  const messageRight = x + message.offsetWidth;
+  const messageLeft = x;
   const wall = document.getElementById("messages");
   const currentHeight = wall.scrollHeight;
+  const currentWidth = wall.scrollWidth;
 
   if (messageBottom > currentHeight) {
     wall.style.height = `${messageBottom + 200}px`; // Expand with a buffer
   }
 
-  // Dynamically expand page horizontally if needed
-  const messageRight = x + message.offsetWidth;
-  const currentWidth = wall.scrollWidth;
-
   if (messageRight > currentWidth) {
     wall.style.width = `${messageRight + 200}px`; // Expand with a buffer
+  }
+
+  if (messageLeft < 0) {
+    wall.style.width = `${currentWidth + Math.abs(messageLeft) + 200}px`; // Expand with a buffer
+    wall.style.left = `${messageLeft - 200}px`; // Shift the wall to the left
   }
 }
 
