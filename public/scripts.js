@@ -41,10 +41,6 @@ async function checkSentiment(messageText) {
   return sentimentScore;
 }
 
-// Add these constants at the top of your file, after other imports
-const SAFE_ZONE_WIDTH = 600;  // Adjust based on your central island width
-const SAFE_ZONE_HEIGHT = 400; // Adjust based on your central island height
-
 const countries = [
   { code: "AF", name: "Afghanistan" },
   { code: "AL", name: "Albania" },
@@ -564,42 +560,10 @@ function getRandomPosition() {
   const wallWidth = wall.scrollWidth;
   const wallHeight = wall.scrollHeight;
 
-  // Increase the number of attempts to find a non-overlapping position
-  const maxAttempts = 50;
-  let attempts = 0;
+  const randomX = Math.floor(Math.random() * (wallWidth - 250));
+  const randomY = Math.floor(Math.random() * (wallHeight - 250));
 
-  while (attempts < maxAttempts) {
-    const randomX = Math.floor(Math.random() * (wallWidth - 250));
-    const randomY = Math.floor(Math.random() * (wallHeight - 250));
-
-    const inSafeZoneX = randomX < (wallWidth - SAFE_ZONE_WIDTH) / 2 || randomX > (wallWidth + SAFE_ZONE_WIDTH) / 2;
-    const inSafeZoneY = randomY < SAFE_ZONE_HEIGHT;
-
-    if (inSafeZoneX && inSafeZoneY && !checkOverlap(randomX, randomY)) {
-      return { x: randomX, y: randomY };
-    }
-
-    attempts++;
-  }
-
-  // If no non-overlapping position found, return a position at the bottom of the wall
-  return { x: Math.floor(Math.random() * (wallWidth - 250)), y: wallHeight };
-}
-
-function checkOverlap(x, y) {
-  const messages = document.querySelectorAll(".message");
-  for (const message of messages) {
-    const rect = message.getBoundingClientRect();
-    if (
-      x < rect.right &&
-      x + 250 > rect.left &&
-      y < rect.bottom &&
-      y + 150 > rect.top
-    ) {
-      return true; // Overlap detected
-    }
-  }
-  return false; // No overlap
+  return { x: randomX, y: randomY };
 }
 
 // set comment to random location initially
@@ -717,40 +681,6 @@ function drop(event) {
   
   let newX = event.clientX + parseInt(offset[0], 10);
   let newY = event.clientY + parseInt(offset[1], 10);
-
-  const wall = document.getElementById("messages");
-  const wallWidth = wall.scrollWidth;
-
-  // Check if the new position is in the safe zone
-  const inSafeZoneX = newX < (wallWidth - SAFE_ZONE_WIDTH) / 2 || newX > (wallWidth + SAFE_ZONE_WIDTH) / 2;
-  const inSafeZoneY = newY < SAFE_ZONE_HEIGHT;
-
-  if (!inSafeZoneX || !inSafeZoneY) {
-    // If in safe zone, adjust position
-    if (!inSafeZoneX) {
-      newX = newX < (wallWidth - SAFE_ZONE_WIDTH) / 2 ? 
-             (wallWidth - SAFE_ZONE_WIDTH) / 2 - 250 : 
-             (wallWidth + SAFE_ZONE_WIDTH) / 2;
-    }
-    if (!inSafeZoneY) {
-      newY = SAFE_ZONE_HEIGHT;
-    }
-  }
-
-  // Check for overlap with other messages
-  const messages = document.querySelectorAll(".message");
-  messages.forEach(message => {
-    if (message !== element) {
-      const rect = message.getBoundingClientRect();
-      const overlapX = newX < rect.right && newX + 250 > rect.left;
-      const overlapY = newY < rect.bottom && newY + 150 > rect.top;
-      if (overlapX && overlapY) {
-        // Adjust position slightly to avoid overlap
-        newX += 20; // Move to the right
-        newY += 20; // Move down
-      }
-    }
-  });
 
   element.style.left = newX + "px";
   element.style.top = newY + "px";
