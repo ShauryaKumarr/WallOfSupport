@@ -18,7 +18,7 @@ const firebaseConfig = {
 // Initialize Firebasex
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
-const auth = getAuth(app);
+/* const auth = getAuth(app);
 
 // Sign in anonymously when the page loads
 signInAnonymously(auth)
@@ -27,7 +27,7 @@ signInAnonymously(auth)
   })
   .catch((error) => {
     console.error("Anonymous sign-in error", error);
-  });
+  }); */
 
 // Check toxicity using Cloud Function
 async function checkToxicity(messageText) {
