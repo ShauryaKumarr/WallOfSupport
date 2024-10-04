@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 // Add Firebase products that you want to use
 import {getDatabase, ref, set, onValue, runTransaction} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
@@ -18,6 +18,16 @@ const firebaseConfig = {
 // Initialize Firebasex
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+const auth = getAuth(app);
+
+// Sign in anonymously when the page loads
+signInAnonymously(auth)
+  .then(() => {
+    console.log("Signed in anonymously");
+  })
+  .catch((error) => {
+    console.error("Anonymous sign-in error", error);
+  });
 
 // Check toxicity using Cloud Function
 async function checkToxicity(messageText) {
@@ -435,7 +445,14 @@ async function addMessage() {
     alert("Your message is too negative and cannot be posted");
     return;
   } else {
+    const user = auth.currentUser;
+    if (!user) {
+      alert("You must be signed in to post a message.");
+      return;
+    }
+
     set(ref(database, 'messages/' + messageId), {
+      uid: user.uid,  // Add this line
       username: nameText,
       message: messageText,
       location: locationInput.value,
@@ -557,43 +574,57 @@ function updateExistingMessage(messageElement, messageData) {
 // random positioning coordinates for message
 function getRandomPosition() {
   const wall = document.getElementById("messages");
-  const wallWidth = wall.scrollWidth;
-  const wallHeight = wall.scrollHeight;
+  const wallWidth = wall.offsetWidth;
+  const wallHeight = wall.offsetHeight;
 
-  const randomX = Math.floor(Math.random() * (wallWidth - 250));
-  const randomY = Math.floor(Math.random() * (wallHeight - 250));
+  const randomX = Math.floor(Math.random() * (wallWidth + 250)) - 250; // Allow negative values
+  const randomY = Math.floor(Math.random() * wallHeight);
 
   return { x: randomX, y: randomY };
 }
 
 // set comment to random location initially
 function positionAndAppendMessage(message) {
+  const wall = document.getElementById("messages");
   const { x, y } = getRandomPosition();
-  message.style.left = `${x}px`;
-  message.style.top = `${y}px`;
+  
+  // Adjust position if it's negative
+  const adjustedX = Math.max(0, x);
+  const adjustedY = Math.max(0, y);
+  
+  message.style.left = `${adjustedX}px`;
+  message.style.top = `${adjustedY}px`;
 
-  const messagesContainer = document.getElementById("messages");
-  messagesContainer.appendChild(message);
+  wall.appendChild(message);
 
   // Dynamically expand page if needed
-  const messageBottom = y + message.offsetHeight;
-  const messageRight = x + message.offsetWidth;
-  const messageLeft = x;
-  const wall = document.getElementById("messages");
-  const currentHeight = wall.scrollHeight;
-  const currentWidth = wall.scrollWidth;
+  const messageBottom = adjustedY + message.offsetHeight;
+  const messageRight = adjustedX + message.offsetWidth;
+  
+  const currentHeight = wall.offsetHeight;
+  const currentWidth = wall.offsetWidth;
 
-  if (messageBottom > currentHeight) {
-    wall.style.height = `${messageBottom + 200}px`; // Expand with a buffer
-  }
-
+  // Expand right
   if (messageRight > currentWidth) {
-    wall.style.width = `${messageRight + 200}px`; // Expand with a buffer
+    wall.style.width = `${messageRight + 200}px`;
   }
 
-  if (messageLeft < 0) {
-    wall.style.width = `${currentWidth + Math.abs(messageLeft) + 200}px`; // Expand with a buffer
-    wall.style.left = `${messageLeft - 200}px`; // Shift the wall to the left
+  // Expand bottom
+  if (messageBottom > currentHeight) {
+    wall.style.height = `${messageBottom + 200}px`;
+  }
+
+  // Expand left
+  if (x < 0) {
+    const newWidth = currentWidth + Math.abs(x) + 200;
+    wall.style.width = `${newWidth}px`;
+    
+    // Shift all existing messages to the right
+    const allMessages = wall.querySelectorAll('.message');
+    allMessages.forEach(msg => {
+      const currentLeft = parseInt(msg.style.left);
+      msg.style.left = `${currentLeft + Math.abs(x)}px`;
+    });
   }
 }
 
