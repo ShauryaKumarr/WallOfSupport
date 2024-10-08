@@ -1,8 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-
-// Add Firebase products that you want to use
-import {getDatabase, ref, set, onValue, runTransaction} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserSessionPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getDatabase, ref, set, onValue, runTransaction, query, limitToLast, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+import { orderBy } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -15,19 +14,125 @@ const firebaseConfig = {
   appId: "1:240950716993:web:b54a37bd8dcab30f2c34c0",
 };
 
-// Initialize Firebasex
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const database = getDatabase(app);
-/* const auth = getAuth(app);
 
-// Sign in anonymously when the page loads
-signInAnonymously(auth)
-  .then(() => {
-    console.log("Signed in anonymously");
-  })
-  .catch((error) => {
-    console.error("Anonymous sign-in error", error);
-  }); */
+// Set persistence to session
+setPersistence(auth, browserSessionPersistence);
+
+// DOM elements
+const loginButton = document.getElementById('loginButton');
+const signupButton = document.getElementById('signupButton');
+const logoutButton = document.getElementById('logoutButton');
+const authModal = document.getElementById('authModal');
+const authForm = document.getElementById('authForm');
+const authTitle = document.getElementById('authTitle');
+const authToggleLink = document.getElementById('authToggleLink');
+const addCommentButton = document.getElementById('addCommentButton');
+const usernameInput = document.getElementById('usernameInput');
+
+let isLoginMode = true;
+
+// Authentication event listeners
+loginButton.addEventListener('click', () => openAuthModal(true));
+signupButton.addEventListener('click', () => openAuthModal(false));
+logoutButton.addEventListener('click', handleLogout);
+authForm.addEventListener('submit', handleAuthSubmit);
+authToggleLink.addEventListener('click', toggleAuthMode);
+addCommentButton.addEventListener('click', handleAddComment);
+
+// Auth state observer
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    loginButton.style.display = 'none';
+    signupButton.style.display = 'none';
+    logoutButton.style.display = 'inline-block';
+    addCommentButton.style.display = 'inline-block';
+  } else {
+    loginButton.style.display = 'inline-block';
+    signupButton.style.display = 'inline-block';
+    logoutButton.style.display = 'none';
+    addCommentButton.style.display = 'none';
+  }
+});
+
+function openAuthModal(loginMode) {
+  isLoginMode = loginMode;
+  authTitle.textContent = loginMode ? 'Login' : 'Sign Up';
+  authToggleLink.textContent = loginMode ? 'Sign up' : 'Login';
+  if (usernameInput) {
+    usernameInput.style.display = loginMode ? 'none' : 'block';
+  }
+  
+  // Clear previous inputs
+  document.getElementById('emailInput').value = '';
+  document.getElementById('passwordInput').value = '';
+  if (!loginMode) {
+    usernameInput.value = ''; // Clear username field for signup
+  }
+  
+  authModal.style.display = 'flex';
+}
+
+function toggleAuthMode(e) {
+  e.preventDefault();
+  isLoginMode = !isLoginMode;
+  authTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
+  authToggleLink.textContent = isLoginMode ? 'Sign up' : 'Login';
+}
+
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('emailInput').value;
+  const password = document.getElementById('passwordInput').value;
+  const username = usernameInput.value.trim();
+
+  try {
+    let userCredential;
+    if (isLoginMode) {
+      userCredential = await signInWithEmailAndPassword(auth, email, password);
+    } else {
+      if (!username) {
+        alert('Please enter a username.');
+        return;
+      }
+      userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Store username in Realtime Database
+      await set(ref(database, `users/${userCredential.user.uid}`), {
+        username,
+        email,
+        contributions: 0,
+      });
+    }
+    const user = userCredential.user;
+    console.log('User authenticated:', user);
+    authModal.style.display = 'none';
+  } catch (error) {
+    console.error('Authentication error:', error);
+    alert(error.message);
+  }
+}
+
+async function handleLogout() {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error('Logout error:', error);
+    alert(error.message);
+  }
+}
+
+function handleAddComment() {
+  const user = auth.currentUser;
+  if (user) {
+    showCommentForm();
+  } else {
+    alert('Please log in or sign up to add a comment.');
+    openAuthModal(true);
+  }
+}
 
 // Check toxicity using Cloud Function
 async function checkToxicity(messageText) {
@@ -319,6 +424,53 @@ const quotes = [
   "Sometimes, the bravest thing you can do is just keep going.",
 ];
 
+function toggleTopContributors() {
+  const topContributors = document.getElementById('topContributors');
+  const topContributorsList = document.getElementById('topContributorsList');
+  
+  topContributors.classList.toggle('top-contributors-expanded');
+  
+  if (topContributors.classList.contains('top-contributors-expanded')) {
+    topContributorsList.classList.remove('hidden');
+    setTimeout(() => {
+      topContributorsList.style.opacity = '1';
+    }, 50);
+  } else {
+    topContributorsList.style.opacity = '0';
+    setTimeout(() => {
+      topContributorsList.classList.add('hidden');
+    }, 300);
+  }
+}
+
+function displayTopContributors() {
+  const usersRef = ref(database, 'users');
+
+  onValue(usersRef, (snapshot) => {
+    const topContributorsList = document.getElementById('topContributorsList');
+    topContributorsList.innerHTML = '';
+    const contributors = {};
+
+    snapshot.forEach((childSnapshot) => {
+      const userData = childSnapshot.val();
+      const username = userData.username || userData.email.split('@')[0];
+      
+      if (contributors[username]) {
+        contributors[username] += userData.contributions || 0;
+      } else {
+        contributors[username] = userData.contributions || 0;
+      }
+    });
+
+    const sortedContributors = Object.entries(contributors).sort((a, b) => b[1] - a[1]);
+
+    sortedContributors.slice(0, 5).forEach(([username, contributions], index) => {
+      const listItem = document.createElement('li');
+      listItem.textContent = `${index + 1}. ${username}: ${contributions} contributions`;
+      topContributorsList.appendChild(listItem);
+    });
+  });
+}
 
 window.onload = () => {
   const locationInput = document.getElementById("locationInput");
@@ -373,6 +525,26 @@ window.onload = () => {
   });
 
   charCount.textContent = `0/${characterLimit} characters`;
+
+  document.getElementById('topContributorsToggle').addEventListener('click', toggleTopContributors);
+
+  const modal = document.getElementById('authModal');
+  const closeBtn = document.getElementsByClassName('close')[0];
+
+  closeBtn.onclick = function() {
+    modal.style.display = "none";
+  }
+
+  window.onclick = function(event) {
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  }
+
+  displayTopContributors();
+
+  // New line to hide the auth modal on page load
+  modal.style.display = "none";
 };
 
 function showCommentForm() {
@@ -392,78 +564,54 @@ function hideCommentForm() {
 
 
 async function addMessage() {
-  const nameInput = document.getElementById("nameInput");
+  const user = auth.currentUser;
+  if (!user) {
+    alert('You must be logged in to post a message.');
+    return;
+  }
+
   const messageInput = document.getElementById("messageInput");
   const locationInput = document.getElementById("locationInput");
 
-  const messageId = `message-${Date.now()}`; // Unique ID
-  let nameText = nameInput.value.trim();
+  const messageId = `message-${Date.now()}`;
   const messageText = messageInput.value.trim();
 
-  const now = new Date();
-  const date = now.toLocaleDateString();
-  const time = now.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  // Set default name to "Anonymous" if name is empty
-  if (!nameText) {
-    nameText = "Anonymous";
-  }
-
-  // Prevent empty comments and enforce a character limit
-  const characterLimit = 250;
   if (!messageText) {
     alert("Please write a message before posting.");
     return;
-  } else if (messageText.length > characterLimit) {
-    alert(`Your message is too long. Please keep it under ${characterLimit} characters.`);
-    return;
   }
 
-  // Check toxicity of the message
-  const toxicityScore = await checkToxicity(messageText);
-  if (toxicityScore === null) {
-    alert("There was an error checking the toxicity of the message. Please try again.");
-    return;
-  }
+  // Use the stored username if available to reduce redundant lookups
+  let username = await getUsername(user.uid) || "Anonymous";
+  localStorage.setItem('username', username); // Cache username locally
 
-  // Check sentiment of the message
-  const sentimentScore = await checkSentiment(messageText);
-  if (sentimentScore === null) {
-    alert("There was an error checking the sentiment of the message. Please try again.");
-    return;
-  }
+  const now = new Date();
+  const date = now.toLocaleDateString();
+  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-  // Define the toxicity threshold (e.g., 0.7 for moderate filtering)
-  const toxicityThreshold = 0.4;
-  if (toxicityScore >= toxicityThreshold) {
-    alert("Your message is too toxic and cannot be posted.");
-    return;
-  } else if (sentimentScore < 0) {
-    alert("Your message is too negative and cannot be posted");
-    return;
-  } else {
-    const user = auth.currentUser;
-    if (!user) {
-      alert("You must be signed in to post a message.");
-      return;
+  const messageData = {
+    uid: user.uid,
+    username, // Use username instead of email
+    message: messageText,
+    location: locationInput.value,
+    date,
+    time,
+    likes: 0,
+  };
+
+  await set(ref(database, `messages/${messageId}`), messageData);
+
+  // Update user's contribution count
+  const userRef = ref(database, `users/${user.uid}`);
+  await runTransaction(userRef, (userData) => {
+    if (userData === null) {
+      return { contributions: 1, email: user.email, username };
+    } else {
+      return { ...userData, contributions: (userData.contributions || 0) + 1 };
     }
+  });
 
-    set(ref(database, 'messages/' + messageId), {
-      uid: user.uid,  // Add this line
-      username: nameText,
-      message: messageText,
-      location: locationInput.value,
-      date,
-      time,
-      likes: 0,  // Add a likes field initialized to 0
-    });
-  }
-
-  // Clear input fields
-  nameInput.value = "";
+  // Clear input fields after posting
   messageInput.value = "";
   locationInput.value = "";
 }
@@ -505,18 +653,10 @@ function renderMessage(messageId, messageData) {
   const messagesContainer = document.getElementById("messages");
   const existingMessage = document.getElementById(messageId);
   if (existingMessage) {
-    // If message is already present in the DOM, update it instead of re-creating
     updateExistingMessage(existingMessage, messageData);
     return;
   }
 
-  const newMessage = createMessageElement(messageId, messageData);
-  makeDraggable(newMessage);
-  positionAndAppendMessage(newMessage);
-  messagesContainer.appendChild(newMessage);
-}
-
-function createMessageElement(messageId, messageData) {
   const newMessage = document.createElement("div");
   newMessage.className = "message";
   newMessage.id = messageId;
@@ -528,7 +668,7 @@ function createMessageElement(messageId, messageData) {
   const dateTimeElement = document.createElement("div");
   dateTimeElement.className = "date-time";
   const nameElement = document.createElement("p");
-  nameElement.textContent = messageData.username || "Anonymous";
+  nameElement.textContent = messageData.username || "Anonymous"; // Set the username correctly
   const dateElement = document.createElement("p");
   dateElement.textContent = new Date(parseInt(messageId.split('-')[1])).toLocaleString();
   dateTimeElement.appendChild(nameElement);
@@ -537,11 +677,11 @@ function createMessageElement(messageId, messageData) {
 
   if (messageData.location) {
     const flag = document.createElement("img");
-      flag.className = "flag";
-      flag.alt = messageData.location;
-      flag.src = `https://flagcdn.com/24x18/${messageData.location}.png`;
-      newMessage.appendChild(flag);
-}
+    flag.className = "flag";
+    flag.alt = messageData.location;
+    flag.src = `https://flagcdn.com/24x18/${messageData.location}.png`;
+    newMessage.appendChild(flag);
+  }
 
   const reactions = document.createElement("div");
   reactions.className = "reactions";
@@ -556,7 +696,9 @@ function createMessageElement(messageId, messageData) {
   reactions.appendChild(heartReaction);
   newMessage.appendChild(reactions);
 
-  return newMessage;
+  makeDraggable(newMessage);
+  positionAndAppendMessage(newMessage);
+  messagesContainer.appendChild(newMessage);
 }
 
 function updateExistingMessage(messageElement, messageData) {
@@ -565,7 +707,8 @@ function updateExistingMessage(messageElement, messageData) {
 
   const dateTimeElement = messageElement.querySelector(".date-time");
   const nameElement = dateTimeElement.querySelector("p:first-child");
-  nameElement.textContent = messageData.username || "Anonymous";
+  const username = messageData.username || "Anonymous";
+  nameElement.textContent = username;
 
   const heartCount = messageElement.querySelector(".heart-count");
   heartCount.innerHTML = messageData.likes || 0;
@@ -745,4 +888,10 @@ function toggleInfoPopup() {
   } else {
     popup.style.display = "none";
   }
+}
+
+// Helper function to get the username from the database
+async function getUsername(uid) {
+  const userRef = ref(database, `users/${uid}/username`);
+  return (await get(userRef)).val();
 }

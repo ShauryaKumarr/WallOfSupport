@@ -21,7 +21,6 @@
         Wall of Support
         <img src="assets/globe.png" alt="Peace Icon" class="symbol" />
       </h1>
-      <!-- Add the info icon -->
       <div id="infoIcon">
         <i class="fas fa-circle-info"></i>
         <span class="hover-text">See Project Statement</span>
@@ -34,9 +33,14 @@
       <div id="buttonContainer">
         <button id="addCommentButton">Add Comment</button>
       </div>
+      <div id="authContainer">
+        <button id="loginButton">Login</button>
+        <button id="signupButton">Sign Up</button>
+        <button id="logoutButton" style="display: none;">Logout</button>
+      </div>
       <div id="wall" style="display: none">
         <button id="backButton">Back</button>
-        <input id="nameInput" type="text" placeholder="Your Name (Optional)" />
+
         <textarea
           id="messageInput"
           rows="3"
@@ -100,6 +104,30 @@
         </li>
       </ul>
     </footer>
+
+    <!-- Updated Login/Signup Modal -->
+    <div id="authModal" class="modal">
+      <div class="modal-content">
+        <span class="close" id="modalClose">&times;</span> <!-- Added ID for easier access -->
+        <h2 id="authTitle">Login</h2>
+        <form id="authForm">
+          <!-- Username Input (only for Signup) -->
+          <input type="text" id="usernameInput" placeholder="Username" style="display: none;" />
+          <input type="email" id="emailInput" placeholder="Email" required />
+          <input type="password" id="passwordInput" placeholder="Password" required autocomplete="current-password" />
+          <button type="submit" id="authSubmitButton">Login</button>
+        </form>
+        <p id="authToggle">Don't have an account? <a href="#" id="authToggleLink">Sign up</a></p>
+      </div>
+    </div>
+
+    <!-- Adjusted Top Contributors Container -->
+    <div id="topContributors" class="top-contributors-collapsed">
+      <div id="topContributorsToggle">
+        Top Contributors <span class="toggle-icon">▲</span>
+      </div>
+      <div id="topContributorsList" class="hidden"></div>
+    </div>
 
     <script type="module" src="scripts.js"></script>
   </body>
