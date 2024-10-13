@@ -761,6 +761,7 @@ function positionAndAppendMessage(message) {
   if (x < 0) {
     const newWidth = currentWidth + Math.abs(x) + 200;
     wall.style.width = `${newWidth}px`;
+    wall.style.marginLeft = `-${Math.abs(x)}px`;
     
     // Shift all existing messages to the right
     const allMessages = wall.querySelectorAll('.message');
