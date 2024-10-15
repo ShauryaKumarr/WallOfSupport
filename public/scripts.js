@@ -581,6 +581,44 @@ async function addMessage() {
     return;
   }
 
+  try {
+    // Optionally, display a loading indicator
+    // showLoadingIndicator();
+
+    // **Check Toxicity**
+    const toxicityScore = await checkToxicity(messageText);
+    console.log('Toxicity Score:', toxicityScore);
+
+    // Define a threshold for toxicity (e.g., 0.8)
+    if (toxicityScore >= 0.8) {
+      alert("Your message was detected as toxic and cannot be posted.");
+      return;
+    }
+
+    // **Check Sentiment**
+    const sentimentScore = await checkSentiment(messageText);
+    console.log('Sentiment Score:', sentimentScore);
+
+    // Optionally, provide feedback based on sentiment score
+    if (sentimentScore < -0.5) {
+      alert("Your message seems very negative. Please try to be more positive.");
+    } 
+
+    // Optionally, you can decide whether to proceed based on sentiment
+    // For example, you might prevent posting if sentiment is too negative
+    // if (sentimentScore < -0.9) {
+    //   alert("Your message seems very negative. Please reach out to support.");
+    //   return;
+    // }
+
+  } catch (error) {
+    console.error('Error checking message:', error);
+    alert('An error occurred while analyzing your message. Please try again.');
+    return;
+  } finally {
+    // hideLoadingIndicator();
+  }
+
   // Use the stored username if available to reduce redundant lookups
   let username = await getUsername(user.uid) || "Anonymous";
   localStorage.setItem('username', username); // Cache username locally
@@ -614,6 +652,10 @@ async function addMessage() {
   // Clear input fields after posting
   messageInput.value = "";
   locationInput.value = "";
+
+  // Optionally, hide the comment form or display a success message
+  // hideCommentForm();
+  // alert('Your message has been posted!');
 }
 
 function displayMessages() {
