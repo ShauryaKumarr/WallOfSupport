@@ -83,6 +83,15 @@ function toggleAuthMode(e) {
   authToggleLink.textContent = isLoginMode ? 'Sign up' : 'Login';
 }
 
+// Add this new function to check username availability
+async function isUsernameAvailable(username) {
+  const usersRef = ref(database, 'users');
+  const snapshot = await get(usersRef);
+  const users = snapshot.val();
+  return !Object.values(users || {}).some(user => user.username === username);
+}
+
+// Update the handleAuthSubmit function
 async function handleAuthSubmit(e) {
   e.preventDefault();
   const email = document.getElementById('emailInput').value;
@@ -98,6 +107,14 @@ async function handleAuthSubmit(e) {
         alert('Please enter a username.');
         return;
       }
+      
+      // Check if the username is available
+      const isAvailable = await isUsernameAvailable(username);
+      if (!isAvailable) {
+        alert('This username is already taken. Please choose another one.');
+        return;
+      }
+      
       userCredential = await createUserWithEmailAndPassword(auth, email, password);
       // Store username in Realtime Database
       await set(ref(database, `users/${userCredential.user.uid}`), {
@@ -572,6 +589,7 @@ async function addMessage() {
 
   const messageInput = document.getElementById("messageInput");
   const locationInput = document.getElementById("locationInput");
+  const loadingSpinner = document.getElementById("loadingSpinner");
 
   const messageId = `message-${Date.now()}`;
   const messageText = messageInput.value.trim();
@@ -582,80 +600,66 @@ async function addMessage() {
   }
 
   try {
-    // Optionally, display a loading indicator
-    // showLoadingIndicator();
+    // Show loading spinner
+    loadingSpinner.classList.remove("hidden");
 
-    // **Check Toxicity**
+    // Check Toxicity
     const toxicityScore = await checkToxicity(messageText);
     console.log('Toxicity Score:', toxicityScore);
 
-    // Define a threshold for toxicity (e.g., 0.8)
     if (toxicityScore >= 0.8) {
       alert("Your message was detected as toxic and cannot be posted.");
       return;
     }
 
-    // **Check Sentiment**
+    // Check Sentiment
     const sentimentScore = await checkSentiment(messageText);
     console.log('Sentiment Score:', sentimentScore);
 
-    // Optionally, provide feedback based on sentiment score
     if (sentimentScore < -0.5) {
       alert("Your message seems very negative. Please try to be more positive.");
-    } 
-
-    // Optionally, you can decide whether to proceed based on sentiment
-    // For example, you might prevent posting if sentiment is too negative
-    // if (sentimentScore < -0.9) {
-    //   alert("Your message seems very negative. Please reach out to support.");
-    //   return;
-    // }
-
-  } catch (error) {
-    console.error('Error checking message:', error);
-    alert('An error occurred while analyzing your message. Please try again.');
-    return;
-  } finally {
-    // hideLoadingIndicator();
-  }
-
-  // Use the stored username if available to reduce redundant lookups
-  let username = await getUsername(user.uid) || "Anonymous";
-  localStorage.setItem('username', username); // Cache username locally
-
-  const now = new Date();
-  const date = now.toLocaleDateString();
-  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-  const messageData = {
-    uid: user.uid,
-    username, // Use username instead of email
-    message: messageText,
-    location: locationInput.value,
-    date,
-    time,
-    likes: 0,
-  };
-
-  await set(ref(database, `messages/${messageId}`), messageData);
-
-  // Update user's contribution count
-  const userRef = ref(database, `users/${user.uid}`);
-  await runTransaction(userRef, (userData) => {
-    if (userData === null) {
-      return { contributions: 1, email: user.email, username };
-    } else {
-      return { ...userData, contributions: (userData.contributions || 0) + 1 };
     }
-  });
 
-  // Clear input fields after posting
-  messageInput.value = "";
-  locationInput.value = "";
+    let username = await getUsername(user.uid) || "Anonymous";
+    localStorage.setItem('username', username);
 
-  // Optionally, hide the comment form or display a success message
-  // hideCommentForm();
-  // alert('Your message has been posted!');
+    const now = new Date();
+    const date = now.toLocaleDateString();
+    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    const messageData = {
+      uid: user.uid,
+      username,
+      message: messageText,
+      location: locationInput.value,
+      date,
+      time,
+      likes: 0,
+    };
+
+    await set(ref(database, `messages/${messageId}`), messageData);
+
+    // Update user's contribution count
+    const userRef = ref(database, `users/${user.uid}`);
+    await runTransaction(userRef, (userData) => {
+      if (userData === null) {
+        return { contributions: 1, email: user.email, username };
+      } else {
+        return { ...userData, contributions: (userData.contributions || 0) + 1 };
+      }
+    });
+
+    messageInput.value = "";
+    locationInput.value = "";
+
+    alert('Your message has been posted!');
+  } catch (error) {
+    console.error('Error posting message:', error);
+    alert('An error occurred while posting your message. Please try again.');
+  } finally {
+    // Hide loading spinner
+    loadingSpinner.classList.add("hidden");
+  }
 }
 
 function displayMessages() {
