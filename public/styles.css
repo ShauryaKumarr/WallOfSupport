@@ -54,10 +54,12 @@ p {
 #buttonContainer {
     display: flex;
     justify-content: center;
+    align-items: center;
     margin-bottom: 10px;
+    flex-wrap: wrap;
 }
 
-button#addCommentButton, button#backButton {
+#addCommentButton, button#backButton {
     padding: 12px 24px;
     background-color: #ff6347;
     color: white;
@@ -68,6 +70,10 @@ button#addCommentButton, button#backButton {
     font-family: 'Lora', serif;
     margin: 5px 0;
     transition: background-color 0.3s, transform 0.2s;
+}
+
+#addCommentButton {
+    margin-right: 10px;
 }
 
 button#addCommentButton:hover, button#backButton:hover {
@@ -575,4 +581,17 @@ button:hover {
 
 .hidden {
   display: none;
+}
+
+.login-prompt {
+  display: none;
+  margin-left: 10px;
+  font-size: 0.9em;
+  color: #8b4513;
+  font-family: 'Lora', serif;
+  background-color: rgba(255, 248, 220, 0.9);
+  padding: 5px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: opacity 0.3s ease;
 }

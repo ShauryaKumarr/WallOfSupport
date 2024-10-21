@@ -32,6 +32,7 @@ const authTitle = document.getElementById('authTitle');
 const authToggleLink = document.getElementById('authToggleLink');
 const addCommentButton = document.getElementById('addCommentButton');
 const usernameInput = document.getElementById('usernameInput');
+const loginPrompt = document.getElementById('loginPrompt');
 
 let isLoginMode = true;
 
@@ -50,18 +51,28 @@ onAuthStateChanged(auth, (user) => {
     signupButton.style.display = 'none';
     logoutButton.style.display = 'inline-block';
     addCommentButton.style.display = 'inline-block';
+    loginPrompt.style.display = 'none';  // Hide the login prompt when user is logged in
   } else {
     loginButton.style.display = 'inline-block';
     signupButton.style.display = 'inline-block';
     logoutButton.style.display = 'none';
     addCommentButton.style.display = 'none';
+    loginPrompt.style.display = 'inline-block';  // Show the login prompt when user is not logged in
   }
 });
 
 function openAuthModal(loginMode) {
   isLoginMode = loginMode;
   authTitle.textContent = loginMode ? 'Login' : 'Sign Up';
-  authToggleLink.textContent = loginMode ? 'Sign up' : 'Login';
+  const authToggle = document.getElementById('authToggle');
+  if (loginMode) {
+    authToggle.innerHTML = 'Don\'t have an account? <a href="#" id="authToggleLink">Sign up</a>';
+  } else {
+    authToggle.innerHTML = 'Have an account? <a href="#" id="authToggleLink">Login</a>';
+  }
+  // Re-add event listener to the new authToggleLink
+  document.getElementById('authToggleLink').addEventListener('click', toggleAuthMode);
+  
   if (usernameInput) {
     usernameInput.style.display = loginMode ? 'none' : 'block';
   }
@@ -80,7 +91,14 @@ function toggleAuthMode(e) {
   e.preventDefault();
   isLoginMode = !isLoginMode;
   authTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
-  authToggleLink.textContent = isLoginMode ? 'Sign up' : 'Login';
+  const authToggle = document.getElementById('authToggle');
+  if (isLoginMode) {
+    authToggle.innerHTML = 'Don\'t have an account? <a href="#" id="authToggleLink">Sign up</a>';
+  } else {
+    authToggle.innerHTML = 'Have an account? <a href="#" id="authToggleLink">Login</a>';
+  }
+  // Re-add event listener to the new authToggleLink
+  document.getElementById('authToggleLink').addEventListener('click', toggleAuthMode);
 }
 
 // Add this new function to check username availability
@@ -91,12 +109,22 @@ async function isUsernameAvailable(username) {
   return !Object.values(users || {}).some(user => user.username === username);
 }
 
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
 // Update the handleAuthSubmit function
 async function handleAuthSubmit(e) {
   e.preventDefault();
   const email = document.getElementById('emailInput').value;
   const password = document.getElementById('passwordInput').value;
   const username = usernameInput.value.trim();
+
+  if (!isValidEmail(email)) {
+    alert('Please enter a valid email address.');
+    return;
+  }
 
   try {
     let userCredential;
@@ -145,10 +173,8 @@ function handleAddComment() {
   const user = auth.currentUser;
   if (user) {
     showCommentForm();
-  } else {
-    alert('Please log in or sign up to add a comment.');
-    openAuthModal(true);
   }
+  // Remove the else block as the button won't be visible to non-logged-in users
 }
 
 // Check toxicity using Cloud Function
@@ -942,3 +968,4 @@ async function getUsername(uid) {
   const userRef = ref(database, `users/${uid}/username`);
   return (await get(userRef)).val();
 }
+
