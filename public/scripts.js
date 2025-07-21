@@ -1,7 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserSessionPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, set, onValue, runTransaction, query, limitToLast, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
-import { orderBy } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getDatabase, ref, set, onValue, runTransaction, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -16,187 +14,57 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const database = getDatabase(app);
 
-// Set persistence to session
-setPersistence(auth, browserSessionPersistence);
-
 // DOM elements
-const loginButton = document.getElementById('loginButton');
-const signupButton = document.getElementById('signupButton');
-const logoutButton = document.getElementById('logoutButton');
-const authModal = document.getElementById('authModal');
-const authForm = document.getElementById('authForm');
-const authTitle = document.getElementById('authTitle');
-const authToggleLink = document.getElementById('authToggleLink');
 const addCommentButton = document.getElementById('addCommentButton');
 const usernameInput = document.getElementById('usernameInput');
-const loginPrompt = document.getElementById('loginPrompt');
 
-let isLoginMode = true;
+// Add comment button listener
+addCommentButton.addEventListener('click', showCommentForm);
 
-// Authentication event listeners
-loginButton.addEventListener('click', () => openAuthModal(true));
-signupButton.addEventListener('click', () => openAuthModal(false));
-logoutButton.addEventListener('click', handleLogout);
-authForm.addEventListener('submit', handleAuthSubmit);
-authToggleLink.addEventListener('click', toggleAuthMode);
-addCommentButton.addEventListener('click', handleAddComment);
-
-// Auth state observer
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    loginButton.style.display = 'none';
-    signupButton.style.display = 'none';
-    logoutButton.style.display = 'inline-block';
-    addCommentButton.style.display = 'inline-block';
-    loginPrompt.style.display = 'none';  // Hide the login prompt when user is logged in
-  } else {
-    loginButton.style.display = 'inline-block';
-    signupButton.style.display = 'inline-block';
-    logoutButton.style.display = 'none';
-    addCommentButton.style.display = 'none';
-    loginPrompt.style.display = 'inline-block';  // Show the login prompt when user is not logged in
-  }
-});
-
-function openAuthModal(loginMode) {
-  isLoginMode = loginMode;
-  authTitle.textContent = loginMode ? 'Login' : 'Sign Up';
-  const authToggle = document.getElementById('authToggle');
-  if (loginMode) {
-    authToggle.innerHTML = 'Don\'t have an account? <a href="#" id="authToggleLink">Sign up</a>';
-  } else {
-    authToggle.innerHTML = 'Have an account? <a href="#" id="authToggleLink">Login</a>';
-  }
-  // Re-add event listener to the new authToggleLink
-  document.getElementById('authToggleLink').addEventListener('click', toggleAuthMode);
-  
-  if (usernameInput) {
-    usernameInput.style.display = loginMode ? 'none' : 'block';
-  }
-  
-  // Clear previous inputs
-  document.getElementById('emailInput').value = '';
-  document.getElementById('passwordInput').value = '';
-  if (!loginMode) {
-    usernameInput.value = ''; // Clear username field for signup
-  }
-  
-  authModal.style.display = 'flex';
-}
-
-function toggleAuthMode(e) {
-  e.preventDefault();
-  isLoginMode = !isLoginMode;
-  authTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
-  const authToggle = document.getElementById('authToggle');
-  if (isLoginMode) {
-    authToggle.innerHTML = 'Don\'t have an account? <a href="#" id="authToggleLink">Sign up</a>';
-  } else {
-    authToggle.innerHTML = 'Have an account? <a href="#" id="authToggleLink">Login</a>';
-  }
-  // Re-add event listener to the new authToggleLink
-  document.getElementById('authToggleLink').addEventListener('click', toggleAuthMode);
-}
-
-// Add this new function to check username availability
-async function isUsernameAvailable(username) {
-  const usersRef = ref(database, 'users');
-  const snapshot = await get(usersRef);
-  const users = snapshot.val();
-  return !Object.values(users || {}).some(user => user.username === username);
-}
-
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
-
-// Update the handleAuthSubmit function
-async function handleAuthSubmit(e) {
-  e.preventDefault();
-  const email = document.getElementById('emailInput').value;
-  const password = document.getElementById('passwordInput').value;
-  const username = usernameInput.value.trim();
-
-  if (!isValidEmail(email)) {
-    alert('Please enter a valid email address.');
-    return;
-  }
-
-  try {
-    let userCredential;
-    if (isLoginMode) {
-      userCredential = await signInWithEmailAndPassword(auth, email, password);
-    } else {
-      if (!username) {
-        alert('Please enter a username.');
-        return;
-      }
-      
-      // Check if the username is available
-      const isAvailable = await isUsernameAvailable(username);
-      if (!isAvailable) {
-        alert('This username is already taken. Please choose another one.');
-        return;
-      }
-      
-      userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Store username in Realtime Database
-      await set(ref(database, `users/${userCredential.user.uid}`), {
-        username,
-        email,
-        contributions: 0,
-      });
-    }
-    const user = userCredential.user;
-    console.log('User authenticated:', user);
-    authModal.style.display = 'none';
-  } catch (error) {
-    console.error('Authentication error:', error);
-    alert(error.message);
-  }
-}
-
-async function handleLogout() {
-  try {
-    await signOut(auth);
-  } catch (error) {
-    console.error('Logout error:', error);
-    alert(error.message);
-  }
-}
-
-function handleAddComment() {
-  const user = auth.currentUser;
-  if (user) {
-    showCommentForm();
-  }
-  // Remove the else block as the button won't be visible to non-logged-in users
-}
-
-// Check toxicity using Cloud Function
+// Check toxicity using Cloud Function (simplified - no auth required)
 async function checkToxicity(messageText) {
-  const response = await fetch('https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkToxicity', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messageText }),
-  });
-  const toxicityScore = await response.json();
-  return toxicityScore;
+  try {
+    const response = await fetch('https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkToxicity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageText }),
+    });
+    
+    if (!response.ok) {
+      console.log('Toxicity API returned error:', response.status);
+      return 0; // Return safe score if API fails
+    }
+    
+    const toxicityScore = await response.json();
+    return typeof toxicityScore === 'number' ? toxicityScore : 0;
+  } catch (error) {
+    console.log('Toxicity check failed:', error.message);
+    return 0; // Return safe score if check fails
+  }
 }
 
-// Check sentiment using Cloud Function
+// Check sentiment using Cloud Function (simplified - no auth required)
 async function checkSentiment(messageText) {
-  const response = await fetch('https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkSentiment', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messageText }),
-  });
-  const sentimentScore = await response.json();
-  return sentimentScore;
+  try {
+    const response = await fetch('https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkSentiment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageText }),
+    });
+    
+    if (!response.ok) {
+      console.log('Sentiment API returned error:', response.status);
+      return 0; // Return neutral score if API fails
+    }
+    
+    const sentimentScore = await response.json();
+    return typeof sentimentScore === 'number' ? sentimentScore : 0;
+  } catch (error) {
+    console.log('Sentiment check failed:', error.message);
+    return 0; // Return neutral score if check fails
+  }
 }
 
 const countries = [
@@ -471,6 +339,11 @@ function toggleTopContributors() {
   const topContributors = document.getElementById('topContributors');
   const topContributorsList = document.getElementById('topContributorsList');
   
+  if (!topContributors || !topContributorsList) {
+    console.error('Top contributors elements not found');
+    return;
+  }
+  
   topContributors.classList.toggle('top-contributors-expanded');
   
   if (topContributors.classList.contains('top-contributors-expanded')) {
@@ -487,35 +360,123 @@ function toggleTopContributors() {
 }
 
 function displayTopContributors() {
-  const usersRef = ref(database, 'users');
+  // Directly count from messages since it's more reliable
+  countContributorsFromMessages();
+}
 
-  onValue(usersRef, (snapshot) => {
+// Count contributors from messages directly 
+function countContributorsFromMessages() {
+  const messagesRef = ref(database, 'messages');
+  
+  onValue(messagesRef, (snapshot) => {
     const topContributorsList = document.getElementById('topContributorsList');
+    if (!topContributorsList) {
+      return;
+    }
+    
     topContributorsList.innerHTML = '';
     const contributors = {};
 
-    snapshot.forEach((childSnapshot) => {
-      const userData = childSnapshot.val();
-      const username = userData.username || userData.email.split('@')[0];
-      
-      if (contributors[username]) {
-        contributors[username] += userData.contributions || 0;
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        const messageData = childSnapshot.val();
+        const username = messageData?.username || 'Anonymous';
+        
+        if (username && username !== 'Anonymous') {
+          contributors[username] = (contributors[username] || 0) + 1;
+        }
+      });
+
+      const sortedContributors = Object.entries(contributors).sort((a, b) => b[1] - a[1]);
+
+      if (sortedContributors.length > 0) {
+        sortedContributors.slice(0, 5).forEach(([username, contributions], index) => {
+          const listItem = document.createElement('li');
+          listItem.textContent = `${index + 1}. ${username}: ${contributions} post${contributions === 1 ? '' : 's'}`;
+          topContributorsList.appendChild(listItem);
+        });
       } else {
-        contributors[username] = userData.contributions || 0;
+        // Show message when no contributors yet
+        const listItem = document.createElement('li');
+        listItem.textContent = 'No contributors yet. Be the first!';
+        listItem.style.fontStyle = 'italic';
+        listItem.style.color = 'var(--text-muted)';
+        topContributorsList.appendChild(listItem);
       }
-    });
-
-    const sortedContributors = Object.entries(contributors).sort((a, b) => b[1] - a[1]);
-
-    sortedContributors.slice(0, 5).forEach(([username, contributions], index) => {
+    } else {
+      // Show message when no messages exist
       const listItem = document.createElement('li');
-      listItem.textContent = `${index + 1}. ${username}: ${contributions} contributions`;
+      listItem.textContent = 'No contributors yet. Be the first!';
+      listItem.style.fontStyle = 'italic';
+      listItem.style.color = 'var(--text-muted)';
       topContributorsList.appendChild(listItem);
-    });
+    }
+  }, (error) => {
+    console.error('Error loading contributors:', error);
+    const topContributorsList = document.getElementById('topContributorsList');
+    if (topContributorsList) {
+      topContributorsList.innerHTML = '<li style="color: var(--text-muted); font-style: italic;">Unable to load contributors</li>';
+    }
   });
 }
 
+// Hide loading spinner immediately when script loads
+document.addEventListener('DOMContentLoaded', () => {
+  const loadingSpinner = document.getElementById("loadingSpinner");
+  if (loadingSpinner) {
+    loadingSpinner.classList.add("hidden");
+  }
+});
+
+// Handle viewport changes and ensure messages stay visible
+function handleViewportChange() {
+  const wall = document.getElementById("messages");
+  const messages = wall.querySelectorAll('.message');
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  messages.forEach(message => {
+    const rect = message.getBoundingClientRect();
+    let x = parseInt(message.style.left) || 0;
+    let y = parseInt(message.style.top) || 0;
+    let needsReposition = false;
+    
+    // Check if message is outside viewport bounds
+    if (x < 0 || x + 300 > viewportWidth) {
+      x = Math.max(20, Math.min(viewportWidth - 320, x));
+      needsReposition = true;
+    }
+    
+    if (y < 0 || y + 150 > viewportHeight - 100) {
+      y = Math.max(20, Math.min(viewportHeight - 170, y));
+      needsReposition = true;
+    }
+    
+    if (needsReposition) {
+      message.style.left = `${x}px`;
+      message.style.top = `${y}px`;
+      
+      // Update localStorage with new position
+      const position = { x, y };
+      localStorage.setItem(message.id, JSON.stringify(position));
+    }
+  });
+  
+  // Update wall container size
+  const minWallWidth = Math.max(viewportWidth, 800);
+  const minWallHeight = Math.max(viewportHeight, 600);
+  
+  wall.style.width = `${minWallWidth}px`;
+  wall.style.height = `${minWallHeight}px`;
+}
+
 window.onload = () => {
+  // Ensure loading spinner is hidden
+  const loadingSpinner = document.getElementById("loadingSpinner");
+  if (loadingSpinner) {
+    loadingSpinner.classList.add("hidden");
+  }
+
   const locationInput = document.getElementById("locationInput");
   countries.forEach((country) => {
     const option = document.createElement("option");
@@ -545,7 +506,7 @@ window.onload = () => {
     infoIcon.style.color = '#ff6347';
   });
   infoIcon.addEventListener("mouseleave", () => {
-    infoIcon.style.color = '#333'; // Reset back to default
+    infoIcon.style.color = '#d2691e';
   });
 
   // Event listener for toggling the popup
@@ -569,40 +530,36 @@ window.onload = () => {
 
   charCount.textContent = `0/${characterLimit} characters`;
 
-  document.getElementById('topContributorsToggle').addEventListener('click', toggleTopContributors);
-
-  const modal = document.getElementById('authModal');
-  const closeBtn = document.getElementsByClassName('close')[0];
-
-  closeBtn.onclick = function() {
-    modal.style.display = "none";
-  }
-
-  window.onclick = function(event) {
-    if (event.target == modal) {
-      modal.style.display = "none";
-    }
+  // Initialize top contributors functionality
+  const topContributorsToggle = document.getElementById('topContributorsToggle');
+  const topContributorsList = document.getElementById('topContributorsList');
+  const topContributors = document.getElementById('topContributors');
+  
+  if (topContributorsToggle && topContributorsList && topContributors) {
+    // Ensure proper initial state
+    topContributors.classList.remove('top-contributors-expanded');
+    topContributors.classList.add('top-contributors-collapsed');
+    topContributorsList.classList.add('hidden');
+    topContributorsList.style.opacity = '0';
+    
+    topContributorsToggle.addEventListener('click', toggleTopContributors);
+  } else {
+    console.error('Top contributors elements not found');
   }
 
   displayTopContributors();
-
-  // New line to hide the auth modal on page load
-  modal.style.display = "none";
-
-  const dragReminder = document.getElementById('dragReminder');
   
-  // Show the reminder after a short delay
-  setTimeout(() => {
-    dragReminder.style.display = 'block';
-  }, 3000);
-
-  // Hide the reminder after 10 seconds
-  setTimeout(() => {
-    dragReminder.style.opacity = '0';
-    setTimeout(() => {
-      dragReminder.style.display = 'none';
-    }, 500);
-  }, 13000);
+  // Handle window resize and orientation changes
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(handleViewportChange, 300);
+  });
+  
+  // Handle device orientation changes (mobile)
+  window.addEventListener('orientationchange', () => {
+    setTimeout(handleViewportChange, 500); // Delay for orientation change to complete
+  });
 };
 
 function showCommentForm() {
@@ -612,7 +569,6 @@ function showCommentForm() {
   addCommentButton.style.display = "none";
 }
 
-
 function hideCommentForm() {
   const commentForm = document.getElementById("wall");
   commentForm.style.display = "none";
@@ -620,23 +576,23 @@ function hideCommentForm() {
   addCommentButton.style.display = "block";
 }
 
-
 async function addMessage() {
-  const user = auth.currentUser;
-  if (!user) {
-    alert('You must be logged in to post a message.');
-    return;
-  }
-
   const messageInput = document.getElementById("messageInput");
   const locationInput = document.getElementById("locationInput");
+  const usernameInput = document.getElementById("usernameInput");
   const loadingSpinner = document.getElementById("loadingSpinner");
 
   const messageId = `message-${Date.now()}`;
   const messageText = messageInput.value.trim();
+  const username = usernameInput.value.trim() || "Anonymous";
 
   if (!messageText) {
     alert("Please write a message before posting.");
+    return;
+  }
+
+  if (!username || username === "") {
+    alert("Please enter your name or username.");
     return;
   }
 
@@ -644,56 +600,43 @@ async function addMessage() {
     // Show loading spinner
     loadingSpinner.classList.remove("hidden");
 
-    // Check Toxicity
+    // Optional content checking - never blocks posting
     const toxicityScore = await checkToxicity(messageText);
-    console.log('Toxicity Score:', toxicityScore);
-
-    if (toxicityScore >= 0.8) {
-      alert("Your message was detected as toxic and cannot be posted.");
-      return;
-    }
-
-    // Check Sentiment
     const sentimentScore = await checkSentiment(messageText);
-    console.log('Sentiment Score:', sentimentScore);
-
-    if (sentimentScore < -0.5) {
-      alert("Your message seems very negative. Please try to be more positive.");
+    
+    // Log results but don't block posting
+    if (toxicityScore > 0) {
+      console.log('Toxicity Score:', toxicityScore);
     }
-
-    let username = await getUsername(user.uid) || "Anonymous";
-    localStorage.setItem('username', username);
+    if (sentimentScore !== 0) {
+      console.log('Sentiment Score:', sentimentScore);
+    }
 
     const now = new Date();
     const date = now.toLocaleDateString();
     const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     const messageData = {
-      uid: user.uid,
       username,
       message: messageText,
       location: locationInput.value,
       date,
       time,
       likes: 0,
+      timestamp: Date.now()
     };
 
     await set(ref(database, `messages/${messageId}`), messageData);
 
-    // Update user's contribution count
-    const userRef = ref(database, `users/${user.uid}`);
-    await runTransaction(userRef, (userData) => {
-      if (userData === null) {
-        return { contributions: 1, email: user.email, username };
-      } else {
-        return { ...userData, contributions: (userData.contributions || 0) + 1 };
-      }
-    });
-
     messageInput.value = "";
+    usernameInput.value = "";
     locationInput.value = "";
 
+    // Refresh top contributors after posting (will automatically count from messages)
+    displayTopContributors();
+
     alert('Your message has been posted!');
+    hideCommentForm();
   } catch (error) {
     console.error('Error posting message:', error);
     alert('An error occurred while posting your message. Please try again.');
@@ -714,7 +657,8 @@ function displayMessages() {
     if (data) {
       const messageIds = Object.keys(data);
       const totalMessages = messageIds.length;
-      const batchSize = 20; // Render messages in batches of 20
+      // Smaller batch size for mobile for better performance
+      const batchSize = window.innerWidth <= 768 ? 10 : 20;
 
       function renderBatch(startIndex) {
         const endIndex = Math.min(startIndex + batchSize, totalMessages);
@@ -726,8 +670,14 @@ function displayMessages() {
         }
 
         if (endIndex < totalMessages) {
-          // Schedule the next batch
-          setTimeout(() => renderBatch(endIndex), 100);
+          // Longer delay on mobile for better performance
+          const delay = window.innerWidth <= 768 ? 200 : 100;
+          setTimeout(() => renderBatch(endIndex), delay);
+        } else {
+          // After all messages are loaded, ensure they're all visible
+          setTimeout(() => {
+            handleViewportChange();
+          }, 500);
         }
       }
 
@@ -755,7 +705,7 @@ function renderMessage(messageId, messageData) {
   const dateTimeElement = document.createElement("div");
   dateTimeElement.className = "date-time";
   const nameElement = document.createElement("p");
-  nameElement.textContent = messageData.username || "Anonymous"; // Set the username correctly
+  nameElement.textContent = messageData.username || "Anonymous";
   const dateElement = document.createElement("p");
   dateElement.textContent = new Date(parseInt(messageId.split('-')[1])).toLocaleString();
   dateTimeElement.appendChild(nameElement);
@@ -801,49 +751,125 @@ function updateExistingMessage(messageElement, messageData) {
   heartCount.innerHTML = messageData.likes || 0;
 }
 
-// random positioning coordinates for message
-function getRandomPosition() {
+// Get viewport-aware positioning for messages
+function getVisiblePosition() {
   const wall = document.getElementById("messages");
-  const wallWidth = wall.offsetWidth;
-  const wallHeight = wall.offsetHeight;
-
-  // Start from the left border and allow positive X values only
-  const randomX = Math.floor(Math.random() * wallWidth);
-  const randomY = Math.floor(Math.random() * wallHeight);
+  const messageWidth = 300; // Default message width
+  const messageHeight = 150; // Approximate message height
+  
+  // Get current viewport size
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  // Calculate safe bounds within viewport (with some padding)
+  const padding = 50;
+  const maxX = Math.max(viewportWidth - messageWidth - padding, messageWidth);
+  const maxY = Math.max(viewportHeight - messageHeight - padding, messageHeight);
+  
+  // Ensure minimum bounds
+  const minX = padding;
+  const minY = padding;
+  
+  // Generate random position within safe visible bounds
+  const randomX = Math.floor(Math.random() * (maxX - minX)) + minX;
+  const randomY = Math.floor(Math.random() * (maxY - minY)) + minY;
 
   return { x: randomX, y: randomY };
 }
 
-// set comment to random location initially
+// Position message in a smart grid-like pattern to avoid overlaps
+function getSmartPosition(existingMessages) {
+  const messageWidth = 380; // Message width + margin (increased spacing)
+  const messageHeight = 220; // Message height + margin (increased spacing)
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const padding = 30; // Increased edge padding
+  
+  // Calculate grid dimensions
+  const cols = Math.floor((viewportWidth - padding) / messageWidth) || 1;
+  const rows = Math.floor((viewportHeight - padding) / messageHeight) || 1;
+  
+  // Try to find an empty grid position first
+  for (let attempts = 0; attempts < 20; attempts++) {
+    const col = Math.floor(Math.random() * cols);
+    const row = Math.floor(Math.random() * rows);
+    
+    const x = col * messageWidth + padding + Math.random() * 60 - 30; // Slightly more random variation
+    const y = row * messageHeight + padding + Math.random() * 60 - 30;
+    
+    // Check if this position is too close to existing messages
+    let tooClose = false;
+    existingMessages.forEach(msg => {
+      const msgRect = msg.getBoundingClientRect();
+      const distance = Math.sqrt(Math.pow(x - msgRect.left, 2) + Math.pow(y - msgRect.top, 2));
+      if (distance < 140) { // Increased minimum distance between messages
+        tooClose = true;
+      }
+    });
+    
+    if (!tooClose) {
+      return { x, y };
+    }
+  }
+  
+  // If no good grid position found, use visible random position
+  return getVisiblePosition();
+}
+
+// set comment to smart location and expand container as needed
 function positionAndAppendMessage(message) {
   const wall = document.getElementById("messages");
-  const { x, y } = getRandomPosition();
-
+  const existingMessages = wall.querySelectorAll('.message');
+  
+  // Get smart position that avoids overlaps and stays visible
+  const { x, y } = getSmartPosition(existingMessages);
+  
   message.style.left = `${x}px`;
   message.style.top = `${y}px`;
 
   wall.appendChild(message);
 
-  // Dynamically expand page if needed
-  const messageBottom = y + message.offsetHeight;
-  const messageRight = x + message.offsetWidth;
+  // Ensure wall container is large enough to contain all messages
+  const messageBottom = y + 200; // Message height + some buffer
+  const messageRight = x + 350; // Message width + some buffer
+  
+  // Get current wall dimensions
+  const currentWallHeight = wall.offsetHeight;
+  const currentWallWidth = wall.offsetWidth;
 
-  const currentHeight = wall.offsetHeight;
-  const currentWidth = wall.offsetWidth;
-
-  // Expand right
-  if (messageRight > currentWidth) {
-    wall.style.width = `${messageRight + 200}px`;
+  // Expand wall container if needed
+  if (messageRight > currentWallWidth) {
+    wall.style.width = `${messageRight + 100}px`;
   }
 
-  // Expand bottom
-  if (messageBottom > currentHeight) {
-    wall.style.height = `${messageBottom + 200}px`;
+  if (messageBottom > currentWallHeight) {
+    wall.style.height = `${messageBottom + 100}px`;
+  }
+  
+  // Ensure minimum wall size for proper layout
+  const minWallWidth = Math.max(window.innerWidth, 800);
+  const minWallHeight = Math.max(window.innerHeight, 600);
+  
+  if (currentWallWidth < minWallWidth) {
+    wall.style.width = `${minWallWidth}px`;
+  }
+  
+  if (currentWallHeight < minWallHeight) {
+    wall.style.height = `${minWallHeight}px`;
   }
 }
 
 function incrementHeartCount(heartReaction, messageId) {
-  const userId = localStorage.getItem("userId") || Date.now();  // Track user with a simple unique identifier
+  // Prevent double-clicking by checking if button is already processing
+  if (heartReaction.disabled) {
+    return;
+  }
+  
+  // Disable button temporarily to prevent double-clicks
+  heartReaction.disabled = true;
+  heartReaction.style.opacity = '0.6';
+
+  const userId = localStorage.getItem("userId") || Date.now();
   localStorage.setItem("userId", userId);
 
   const likedMessages = JSON.parse(localStorage.getItem("likedMessages")) || [];
@@ -851,6 +877,9 @@ function incrementHeartCount(heartReaction, messageId) {
   // Prevent liking the same message multiple times
   if (likedMessages.includes(messageId)) {
     alert("You've already liked this message.");
+    // Re-enable button
+    heartReaction.disabled = false;
+    heartReaction.style.opacity = '1';
     return;
   }
 
@@ -869,9 +898,14 @@ function incrementHeartCount(heartReaction, messageId) {
     heartCount.innerHTML = parseInt(heartCount.innerHTML) + 1;
   }).catch((error) => {
     console.error('Transaction failed:', error);
+  }).finally(() => {
+    // Re-enable button after transaction completes
+    setTimeout(() => {
+      heartReaction.disabled = false;
+      heartReaction.style.opacity = '1';
+    }, 500); // Small delay to prevent rapid clicking
   });
 }
-
 
 // message initially appears at random location on board
 function showRandomQuote() {
@@ -885,8 +919,9 @@ function showRandomQuote() {
   }, 10000);
 }
 
-// Allows user to drag comments through click input
+// Allows user to drag comments through click input and touch
 function makeDraggable(element) {
+  // Desktop drag and drop
   element.setAttribute("draggable", true);
   element.addEventListener(
     "dragstart",
@@ -897,6 +932,70 @@ function makeDraggable(element) {
     false
   );
 
+  // Mobile touch support
+  let isDragging = false;
+  let startX, startY, initialX, initialY;
+
+  // Touch start
+  element.addEventListener('touchstart', (e) => {
+    // Don't start dragging if touching a button (like the like button)
+    if (e.target.closest('.reaction')) {
+      return;
+    }
+    
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    
+    const rect = element.getBoundingClientRect();
+    initialX = rect.left;
+    initialY = rect.top;
+    
+    // Add a small delay to distinguish between tap and drag
+    setTimeout(() => {
+      if (Math.abs(touch.clientX - startX) > 5 || Math.abs(touch.clientY - startY) > 5) {
+        isDragging = true;
+        element.style.transition = 'none';
+        element.style.zIndex = '1000';
+        element.style.transform = 'rotate(0deg) scale(1.05)';
+      }
+    }, 100);
+    
+    e.preventDefault(); // Prevent scrolling
+  }, { passive: false });
+
+  // Touch move
+  element.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    
+    const newX = initialX + deltaX;
+    const newY = initialY + deltaY;
+    
+    element.style.left = `${newX}px`;
+    element.style.top = `${newY}px`;
+    
+    e.preventDefault(); // Prevent scrolling
+  }, { passive: false });
+
+  // Touch end
+  element.addEventListener('touchend', (e) => {
+    if (!isDragging) return;
+    
+    isDragging = false;
+    element.style.transition = 'all 0.3s ease';
+    element.style.zIndex = 'auto';
+    element.style.transform = 'rotate(-1deg)';
+    
+    // Save position to localStorage
+    const rect = element.getBoundingClientRect();
+    const position = { x: rect.left, y: rect.top };
+    localStorage.setItem(element.id, JSON.stringify(position));
+  });
+
   // On load, position the element based on saved positions in localStorage
   const savedPosition = localStorage.getItem(element.id);
   if (savedPosition) {
@@ -904,13 +1003,12 @@ function makeDraggable(element) {
     element.style.left = `${x}px`;
     element.style.top = `${y}px`;
   } else {
-    // Randomly position if no saved position exists
-    const { x, y } = getRandomPosition();
+    // Use visible positioning if no saved position exists
+    const { x, y } = getVisiblePosition();
     element.style.left = `${x}px`;
     element.style.top = `${y}px`;
   }
 }
-
 
 function drag_start(event) {
   var style = window.getComputedStyle(event.target, null);
@@ -942,8 +1040,6 @@ function drop(event) {
   return false;
 }
 
-
-
 function drag_over(event) {
   event.preventDefault();
   return false;
@@ -959,11 +1055,5 @@ function toggleInfoPopup() {
   } else {
     popup.style.display = "none";
   }
-}
-
-// Helper function to get the username from the database
-async function getUsername(uid) {
-  const userRef = ref(database, `users/${uid}/username`);
-  return (await get(userRef)).val();
 }
 
