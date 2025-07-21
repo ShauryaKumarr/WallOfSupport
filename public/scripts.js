@@ -1,7 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, browserSessionPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, set, onValue, runTransaction, query, limitToLast, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
-import { orderBy } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getDatabase, ref, set, onValue, runTransaction, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -16,187 +14,57 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const database = getDatabase(app);
 
-// Set persistence to session
-setPersistence(auth, browserSessionPersistence);
-
 // DOM elements
-const loginButton = document.getElementById('loginButton');
-const signupButton = document.getElementById('signupButton');
-const logoutButton = document.getElementById('logoutButton');
-const authModal = document.getElementById('authModal');
-const authForm = document.getElementById('authForm');
-const authTitle = document.getElementById('authTitle');
-const authToggleLink = document.getElementById('authToggleLink');
 const addCommentButton = document.getElementById('addCommentButton');
 const usernameInput = document.getElementById('usernameInput');
-const loginPrompt = document.getElementById('loginPrompt');
 
-let isLoginMode = true;
+// Add comment button listener
+addCommentButton.addEventListener('click', showCommentForm);
 
-// Authentication event listeners
-loginButton.addEventListener('click', () => openAuthModal(true));
-signupButton.addEventListener('click', () => openAuthModal(false));
-logoutButton.addEventListener('click', handleLogout);
-authForm.addEventListener('submit', handleAuthSubmit);
-authToggleLink.addEventListener('click', toggleAuthMode);
-addCommentButton.addEventListener('click', handleAddComment);
-
-// Auth state observer
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    loginButton.style.display = 'none';
-    signupButton.style.display = 'none';
-    logoutButton.style.display = 'inline-block';
-    addCommentButton.style.display = 'inline-block';
-    loginPrompt.style.display = 'none';  // Hide the login prompt when user is logged in
-  } else {
-    loginButton.style.display = 'inline-block';
-    signupButton.style.display = 'inline-block';
-    logoutButton.style.display = 'none';
-    addCommentButton.style.display = 'none';
-    loginPrompt.style.display = 'inline-block';  // Show the login prompt when user is not logged in
-  }
-});
-
-function openAuthModal(loginMode) {
-  isLoginMode = loginMode;
-  authTitle.textContent = loginMode ? 'Login' : 'Sign Up';
-  const authToggle = document.getElementById('authToggle');
-  if (loginMode) {
-    authToggle.innerHTML = 'Don\'t have an account? <a href="#" id="authToggleLink">Sign up</a>';
-  } else {
-    authToggle.innerHTML = 'Have an account? <a href="#" id="authToggleLink">Login</a>';
-  }
-  // Re-add event listener to the new authToggleLink
-  document.getElementById('authToggleLink').addEventListener('click', toggleAuthMode);
-  
-  if (usernameInput) {
-    usernameInput.style.display = loginMode ? 'none' : 'block';
-  }
-  
-  // Clear previous inputs
-  document.getElementById('emailInput').value = '';
-  document.getElementById('passwordInput').value = '';
-  if (!loginMode) {
-    usernameInput.value = ''; // Clear username field for signup
-  }
-  
-  authModal.style.display = 'flex';
-}
-
-function toggleAuthMode(e) {
-  e.preventDefault();
-  isLoginMode = !isLoginMode;
-  authTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
-  const authToggle = document.getElementById('authToggle');
-  if (isLoginMode) {
-    authToggle.innerHTML = 'Don\'t have an account? <a href="#" id="authToggleLink">Sign up</a>';
-  } else {
-    authToggle.innerHTML = 'Have an account? <a href="#" id="authToggleLink">Login</a>';
-  }
-  // Re-add event listener to the new authToggleLink
-  document.getElementById('authToggleLink').addEventListener('click', toggleAuthMode);
-}
-
-// Add this new function to check username availability
-async function isUsernameAvailable(username) {
-  const usersRef = ref(database, 'users');
-  const snapshot = await get(usersRef);
-  const users = snapshot.val();
-  return !Object.values(users || {}).some(user => user.username === username);
-}
-
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
-
-// Update the handleAuthSubmit function
-async function handleAuthSubmit(e) {
-  e.preventDefault();
-  const email = document.getElementById('emailInput').value;
-  const password = document.getElementById('passwordInput').value;
-  const username = usernameInput.value.trim();
-
-  if (!isValidEmail(email)) {
-    alert('Please enter a valid email address.');
-    return;
-  }
-
-  try {
-    let userCredential;
-    if (isLoginMode) {
-      userCredential = await signInWithEmailAndPassword(auth, email, password);
-    } else {
-      if (!username) {
-        alert('Please enter a username.');
-        return;
-      }
-      
-      // Check if the username is available
-      const isAvailable = await isUsernameAvailable(username);
-      if (!isAvailable) {
-        alert('This username is already taken. Please choose another one.');
-        return;
-      }
-      
-      userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Store username in Realtime Database
-      await set(ref(database, `users/${userCredential.user.uid}`), {
-        username,
-        email,
-        contributions: 0,
-      });
-    }
-    const user = userCredential.user;
-    console.log('User authenticated:', user);
-    authModal.style.display = 'none';
-  } catch (error) {
-    console.error('Authentication error:', error);
-    alert(error.message);
-  }
-}
-
-async function handleLogout() {
-  try {
-    await signOut(auth);
-  } catch (error) {
-    console.error('Logout error:', error);
-    alert(error.message);
-  }
-}
-
-function handleAddComment() {
-  const user = auth.currentUser;
-  if (user) {
-    showCommentForm();
-  }
-  // Remove the else block as the button won't be visible to non-logged-in users
-}
-
-// Check toxicity using Cloud Function
+// Check toxicity using Cloud Function (simplified - no auth required)
 async function checkToxicity(messageText) {
-  const response = await fetch('https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkToxicity', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messageText }),
-  });
-  const toxicityScore = await response.json();
-  return toxicityScore;
+  try {
+    const response = await fetch('https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkToxicity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageText }),
+    });
+    
+    if (!response.ok) {
+      console.log('Toxicity API returned error:', response.status);
+      return 0; // Return safe score if API fails
+    }
+    
+    const toxicityScore = await response.json();
+    return typeof toxicityScore === 'number' ? toxicityScore : 0;
+  } catch (error) {
+    console.log('Toxicity check failed:', error.message);
+    return 0; // Return safe score if check fails
+  }
 }
 
-// Check sentiment using Cloud Function
+// Check sentiment using Cloud Function (simplified - no auth required)
 async function checkSentiment(messageText) {
-  const response = await fetch('https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkSentiment', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messageText }),
-  });
-  const sentimentScore = await response.json();
-  return sentimentScore;
+  try {
+    const response = await fetch('https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkSentiment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageText }),
+    });
+    
+    if (!response.ok) {
+      console.log('Sentiment API returned error:', response.status);
+      return 0; // Return neutral score if API fails
+    }
+    
+    const sentimentScore = await response.json();
+    return typeof sentimentScore === 'number' ? sentimentScore : 0;
+  } catch (error) {
+    console.log('Sentiment check failed:', error.message);
+    return 0; // Return neutral score if check fails
+  }
 }
 
 const countries = [
@@ -496,7 +364,7 @@ function displayTopContributors() {
 
     snapshot.forEach((childSnapshot) => {
       const userData = childSnapshot.val();
-      const username = userData.username || userData.email.split('@')[0];
+      const username = userData.username || userData.email?.split('@')[0] || "Anonymous";
       
       if (contributors[username]) {
         contributors[username] += userData.contributions || 0;
@@ -515,7 +383,21 @@ function displayTopContributors() {
   });
 }
 
+// Hide loading spinner immediately when script loads
+document.addEventListener('DOMContentLoaded', () => {
+  const loadingSpinner = document.getElementById("loadingSpinner");
+  if (loadingSpinner) {
+    loadingSpinner.classList.add("hidden");
+  }
+});
+
 window.onload = () => {
+  // Ensure loading spinner is hidden
+  const loadingSpinner = document.getElementById("loadingSpinner");
+  if (loadingSpinner) {
+    loadingSpinner.classList.add("hidden");
+  }
+
   const locationInput = document.getElementById("locationInput");
   countries.forEach((country) => {
     const option = document.createElement("option");
@@ -545,7 +427,7 @@ window.onload = () => {
     infoIcon.style.color = '#ff6347';
   });
   infoIcon.addEventListener("mouseleave", () => {
-    infoIcon.style.color = '#333'; // Reset back to default
+    infoIcon.style.color = '#d2691e';
   });
 
   // Event listener for toggling the popup
@@ -571,23 +453,7 @@ window.onload = () => {
 
   document.getElementById('topContributorsToggle').addEventListener('click', toggleTopContributors);
 
-  const modal = document.getElementById('authModal');
-  const closeBtn = document.getElementsByClassName('close')[0];
-
-  closeBtn.onclick = function() {
-    modal.style.display = "none";
-  }
-
-  window.onclick = function(event) {
-    if (event.target == modal) {
-      modal.style.display = "none";
-    }
-  }
-
   displayTopContributors();
-
-  // New line to hide the auth modal on page load
-  modal.style.display = "none";
 };
 
 function showCommentForm() {
@@ -597,7 +463,6 @@ function showCommentForm() {
   addCommentButton.style.display = "none";
 }
 
-
 function hideCommentForm() {
   const commentForm = document.getElementById("wall");
   commentForm.style.display = "none";
@@ -605,23 +470,23 @@ function hideCommentForm() {
   addCommentButton.style.display = "block";
 }
 
-
 async function addMessage() {
-  const user = auth.currentUser;
-  if (!user) {
-    alert('You must be logged in to post a message.');
-    return;
-  }
-
   const messageInput = document.getElementById("messageInput");
   const locationInput = document.getElementById("locationInput");
+  const usernameInput = document.getElementById("usernameInput");
   const loadingSpinner = document.getElementById("loadingSpinner");
 
   const messageId = `message-${Date.now()}`;
   const messageText = messageInput.value.trim();
+  const username = usernameInput.value.trim() || "Anonymous";
 
   if (!messageText) {
     alert("Please write a message before posting.");
+    return;
+  }
+
+  if (!username || username === "") {
+    alert("Please enter your name or username.");
     return;
   }
 
@@ -629,56 +494,46 @@ async function addMessage() {
     // Show loading spinner
     loadingSpinner.classList.remove("hidden");
 
-    // Check Toxicity
+    // Optional content checking - never blocks posting
     const toxicityScore = await checkToxicity(messageText);
-    console.log('Toxicity Score:', toxicityScore);
-
-    if (toxicityScore >= 0.8) {
-      alert("Your message was detected as toxic and cannot be posted.");
-      return;
-    }
-
-    // Check Sentiment
     const sentimentScore = await checkSentiment(messageText);
-    console.log('Sentiment Score:', sentimentScore);
-
-    if (sentimentScore < -0.5) {
-      alert("Your message seems very negative. Please try to be more positive.");
+    
+    // Log results but don't block posting
+    if (toxicityScore > 0) {
+      console.log('Toxicity Score:', toxicityScore);
     }
-
-    let username = await getUsername(user.uid) || "Anonymous";
-    localStorage.setItem('username', username);
+    if (sentimentScore !== 0) {
+      console.log('Sentiment Score:', sentimentScore);
+    }
 
     const now = new Date();
     const date = now.toLocaleDateString();
     const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     const messageData = {
-      uid: user.uid,
       username,
       message: messageText,
       location: locationInput.value,
       date,
       time,
       likes: 0,
+      timestamp: Date.now()
     };
 
     await set(ref(database, `messages/${messageId}`), messageData);
 
-    // Update user's contribution count
-    const userRef = ref(database, `users/${user.uid}`);
-    await runTransaction(userRef, (userData) => {
-      if (userData === null) {
-        return { contributions: 1, email: user.email, username };
-      } else {
-        return { ...userData, contributions: (userData.contributions || 0) + 1 };
-      }
+    // Update contributions (simplified, just count total posts by username)
+    const contributionsRef = ref(database, `contributions/${username}`);
+    await runTransaction(contributionsRef, (currentCount) => {
+      return (currentCount || 0) + 1;
     });
 
     messageInput.value = "";
+    usernameInput.value = "";
     locationInput.value = "";
 
     alert('Your message has been posted!');
+    hideCommentForm();
   } catch (error) {
     console.error('Error posting message:', error);
     alert('An error occurred while posting your message. Please try again.');
@@ -740,7 +595,7 @@ function renderMessage(messageId, messageData) {
   const dateTimeElement = document.createElement("div");
   dateTimeElement.className = "date-time";
   const nameElement = document.createElement("p");
-  nameElement.textContent = messageData.username || "Anonymous"; // Set the username correctly
+  nameElement.textContent = messageData.username || "Anonymous";
   const dateElement = document.createElement("p");
   dateElement.textContent = new Date(parseInt(messageId.split('-')[1])).toLocaleString();
   dateTimeElement.appendChild(nameElement);
@@ -792,7 +647,7 @@ function getRandomPosition() {
   const wallWidth = wall.offsetWidth;
   const wallHeight = wall.offsetHeight;
 
-  const randomX = Math.floor(Math.random() * (wallWidth + 250)) - 250; // Allow negative values
+  const randomX = Math.floor(Math.random() * (wallWidth + 250)) - 250;
   const randomY = Math.floor(Math.random() * wallHeight);
 
   return { x: randomX, y: randomY };
@@ -845,7 +700,7 @@ function positionAndAppendMessage(message) {
 }
 
 function incrementHeartCount(heartReaction, messageId) {
-  const userId = localStorage.getItem("userId") || Date.now();  // Track user with a simple unique identifier
+  const userId = localStorage.getItem("userId") || Date.now();
   localStorage.setItem("userId", userId);
 
   const likedMessages = JSON.parse(localStorage.getItem("likedMessages")) || [];
@@ -873,7 +728,6 @@ function incrementHeartCount(heartReaction, messageId) {
     console.error('Transaction failed:', error);
   });
 }
-
 
 // message initially appears at random location on board
 function showRandomQuote() {
@@ -913,7 +767,6 @@ function makeDraggable(element) {
   }
 }
 
-
 function drag_start(event) {
   var style = window.getComputedStyle(event.target, null);
   event.dataTransfer.setData(
@@ -944,8 +797,6 @@ function drop(event) {
   return false;
 }
 
-
-
 function drag_over(event) {
   event.preventDefault();
   return false;
@@ -961,11 +812,5 @@ function toggleInfoPopup() {
   } else {
     popup.style.display = "none";
   }
-}
-
-// Helper function to get the username from the database
-async function getUsername(uid) {
-  const userRef = ref(database, `users/${uid}/username`);
-  return (await get(userRef)).val();
 }
 

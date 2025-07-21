@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wall Of Support</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&family=Raleway&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
@@ -32,25 +32,30 @@
       </p>
       <div id="buttonContainer">
         <button id="addCommentButton">Add Comment</button>
-        <span id="loginPrompt" class="login-prompt">
-          (Login or Sign Up to comment)
-        </span>
-      </div>
-      <div id="authContainer">
-        <button id="loginButton">Login</button>
-        <button id="signupButton">Sign Up</button>
-        <button id="logoutButton" style="display: none;">Logout</button>
       </div>
       <div id="wall" style="display: none">
         <button id="backButton">Back</button>
 
+        <label for="usernameInput">Your name:</label>
+        <input
+          id="usernameInput"
+          type="text"
+          placeholder="Enter your name or username"
+          maxlength="30"
+          required
+        />
+        
+        <label for="messageInput">Your message:</label>
         <textarea
           id="messageInput"
           rows="3"
-          placeholder="Write your message here..."
+          placeholder="Write your positive message here..."
+          maxlength="250"
+          required
         ></textarea>
         <p id="charCount">0/250 characters</p>
-        <label for="locationInput">Select your country:</label>
+        
+        <label for="locationInput">Select your country (optional):</label>
         <select id="locationInput">
           <option value="">Select your country</option>
           <!-- Country options will be populated here -->
@@ -108,21 +113,7 @@
       </ul>
     </footer>
 
-    <!-- Updated Login/Signup Modal -->
-    <div id="authModal" class="modal">
-      <div class="modal-content">
-        <span class="close" id="modalClose">&times;</span> <!-- Added ID for easier access -->
-        <h2 id="authTitle">Login</h2>
-        <form id="authForm">
-          <!-- Username Input (only for Signup) -->
-          <input type="text" id="usernameInput" placeholder="Username" style="display: none;" />
-          <input type="email" id="emailInput" placeholder="Email" required />
-          <input type="password" id="passwordInput" placeholder="Password" required autocomplete="current-password" />
-          <button type="submit" id="authSubmitButton">Login</button>
-        </form>
-        <p id="authToggle">Have an account? <a href="#" id="authToggleLink">Login</a></p>
-      </div>
-    </div>
+    <!-- Removed authentication modal since we no longer need login/signup -->
 
     <!-- Adjusted Top Contributors Container -->
     <div id="topContributors" class="top-contributors-collapsed">
