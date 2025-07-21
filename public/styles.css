@@ -234,6 +234,17 @@ button:active {
   min-height: 60vh;
 }
 
+/* Add bottom margin on mobile to account for footer */
+@media (max-width: 768px) {
+  #messages {
+    margin-bottom: 150px;
+  }
+  
+  body {
+    padding-bottom: 0; /* Remove default padding */
+  }
+}
+
 .message {
   background: linear-gradient(135deg, #ffffe0 0%, #fffacd 100%);
   padding: 1.25rem 1.25rem 4rem 1.25rem;
@@ -654,49 +665,286 @@ button:active {
   100% { transform: rotate(360deg); }
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  h1 {
-    font-size: 2rem;
-  }
-  
-  .symbol {
-    width: 48px;
-    height: 48px;
+/* Mobile-First Responsive Design */
+
+/* Small devices (phones) */
+@media (max-width: 480px) {
+  body {
+    background-attachment: scroll; /* Better performance on mobile */
+    /* Optimize animations for mobile */
+    transform: translateZ(0);
+    -webkit-font-smoothing: antialiased;
   }
   
   #header {
     width: 95%;
-    padding: 1.5rem;
+    padding: 1rem;
+    margin: 1rem auto;
+  }
+  
+  h1 {
+    font-size: 1.75rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .symbol {
+    width: 40px;
+    height: 40px;
+    margin-left: 0;
+  }
+  
+  h2 {
+    font-size: 1.2rem;
+  }
+  
+  p {
+    font-size: 1rem;
+  }
+  
+  #addCommentButton, button#backButton {
+    padding: 1rem 1.5rem;
+    font-size: 1.1rem;
+    width: 100%;
+    max-width: 280px;
   }
   
   #wall {
     width: 95%;
-    padding: 1.5rem;
+    padding: 1rem;
+    margin: 1rem auto;
+  }
+  
+  input, textarea, select {
+    padding: 1.2rem;
+    font-size: 1.1rem; /* Prevent zoom on iOS */
+  }
+  
+  button {
+    padding: 1.2rem 1.5rem;
+    font-size: 1.1rem;
+    width: 100%;
   }
   
   .message {
-    width: 250px;
+    width: 280px;
+    padding: 1rem 1rem 3.5rem 1rem;
+    min-height: 120px;
+    font-size: 0.9rem;
+  }
+  
+  .reaction {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+    min-height: 44px; /* Apple's recommended touch target */
   }
   
   #quoteContainer {
-    font-size: 1.1rem;
+    font-size: 1rem;
+    width: 95%;
   }
   
   #topContributors {
-    position: relative;
-    top: auto;
-    left: auto;
+    position: static;
+    width: 95%;
     margin: 1rem auto;
-    width: 90%;
-    max-width: 300px;
+    min-width: auto;
   }
   
   #infoIcon {
-    position: relative;
+    position: static;
     margin: 1rem auto 0;
-    top: auto;
-    right: auto;
+    padding: 1rem;
+  }
+  
+  #footer {
+    padding: 0.75rem 0;
+    position: relative; /* Don't cover content on mobile */
+  }
+  
+  #footer p {
+    font-size: 0.8rem;
+    margin: 0.25rem 0;
+  }
+  
+  .social-icons {
+    gap: 1rem;
+  }
+  
+  .social-icons a {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+  
+  .popup {
+    width: 95vw;
+    height: 90vh;
+    padding: 1rem;
+    max-width: none;
+  }
+  
+  .popup h3 {
+    font-size: 1.5rem;
+  }
+  
+  .popup p {
+    font-size: 0.95rem;
+  }
+}
+
+/* Medium devices (tablets) */
+@media (min-width: 481px) and (max-width: 768px) {
+  #header {
+    width: 90%;
+    padding: 1.5rem;
+  }
+  
+  h1 {
+    font-size: 2.2rem;
+  }
+  
+  .symbol {
+    width: 50px;
+    height: 50px;
+  }
+  
+  #addCommentButton, button#backButton {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+  }
+  
+  #wall {
+    width: 90%;
+    padding: 1.5rem;
+  }
+  
+  input, textarea, select {
+    padding: 1.1rem;
+    font-size: 1.05rem;
+  }
+  
+  .message {
+    width: 260px;
+    padding: 1.1rem 1.1rem 3.75rem 1.1rem;
+    min-height: 130px;
+  }
+  
+  .reaction {
+    padding: 0.5rem 1rem;
+    min-height: 44px;
+  }
+  
+  #quoteContainer {
+    font-size: 1.2rem;
+  }
+  
+  #topContributors {
+    position: static;
+    width: 90%;
+    margin: 1rem auto;
+    min-width: auto;
+  }
+  
+  #infoIcon {
+    position: static;
+    margin: 1rem auto 0;
+  }
+  
+  #footer {
+    position: relative;
+  }
+}
+
+/* Large tablets and small laptops */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .message {
+    width: 280px;
+  }
+  
+  #topContributors {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+  }
+  
+  #infoIcon {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+  }
+  
+  #footer {
+    position: fixed;
+  }
+}
+
+/* Landscape orientation optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  #header {
+    margin: 0.5rem auto;
+    padding: 1rem;
+  }
+  
+  h1 {
+    font-size: 1.8rem;
+  }
+  
+  h2 {
+    font-size: 1.1rem;
+  }
+  
+  .message {
+    width: 240px;
+    min-height: 110px;
+  }
+  
+  #footer {
+    position: relative;
+    padding: 0.5rem 0;
+  }
+}
+
+/* Touch-specific optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* This targets touch devices */
+  
+  .message:hover {
+    /* Disable hover effects on touch devices */
+    transform: rotate(-1deg);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .reaction:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  #infoIcon:hover {
+    background: rgba(210, 105, 30, 0.1);
+    transform: none;
+  }
+  
+  .social-icons a:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    transform: none;
+  }
+  
+  button:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* Make touch targets larger */
+  .reaction {
+    min-width: 80px;
+    min-height: 44px;
+    padding: 0.7rem 1rem;
+  }
+  
+  #addCommentButton, button {
+    min-height: 48px;
   }
 }
 

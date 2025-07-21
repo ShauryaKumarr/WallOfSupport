@@ -355,21 +355,20 @@ function toggleTopContributors() {
 }
 
 function displayTopContributors() {
-  const usersRef = ref(database, 'users');
+  const userStatsRef = ref(database, 'userStats');
 
-  onValue(usersRef, (snapshot) => {
+  onValue(userStatsRef, (snapshot) => {
     const topContributorsList = document.getElementById('topContributorsList');
     topContributorsList.innerHTML = '';
     const contributors = {};
 
     snapshot.forEach((childSnapshot) => {
+      const username = childSnapshot.key;
       const userData = childSnapshot.val();
-      const username = userData.username || userData.email?.split('@')[0] || "Anonymous";
+      const postCount = userData.totalPosts || 0;
       
-      if (contributors[username]) {
-        contributors[username] += userData.contributions || 0;
-      } else {
-        contributors[username] = userData.contributions || 0;
+      if (postCount > 0) {
+        contributors[username] = postCount;
       }
     });
 
@@ -377,7 +376,7 @@ function displayTopContributors() {
 
     sortedContributors.slice(0, 5).forEach(([username, contributions], index) => {
       const listItem = document.createElement('li');
-      listItem.textContent = `${index + 1}. ${username}: ${contributions} contributions`;
+      listItem.textContent = `${index + 1}. ${username}: ${contributions} posts`;
       topContributorsList.appendChild(listItem);
     });
   });
@@ -522,8 +521,8 @@ async function addMessage() {
 
     await set(ref(database, `messages/${messageId}`), messageData);
 
-    // Update contributions (simplified, just count total posts by username)
-    const contributionsRef = ref(database, `contributions/${username}`);
+    // Update contributions in a cleaner structure
+    const contributionsRef = ref(database, `userStats/${username}/totalPosts`);
     await runTransaction(contributionsRef, (currentCount) => {
       return (currentCount || 0) + 1;
     });
@@ -554,7 +553,8 @@ function displayMessages() {
     if (data) {
       const messageIds = Object.keys(data);
       const totalMessages = messageIds.length;
-      const batchSize = 20; // Render messages in batches of 20
+      // Smaller batch size for mobile for better performance
+      const batchSize = window.innerWidth <= 768 ? 10 : 20;
 
       function renderBatch(startIndex) {
         const endIndex = Math.min(startIndex + batchSize, totalMessages);
@@ -566,8 +566,9 @@ function displayMessages() {
         }
 
         if (endIndex < totalMessages) {
-          // Schedule the next batch
-          setTimeout(() => renderBatch(endIndex), 100);
+          // Longer delay on mobile for better performance
+          const delay = window.innerWidth <= 768 ? 200 : 100;
+          setTimeout(() => renderBatch(endIndex), delay);
         }
       }
 
@@ -700,6 +701,15 @@ function positionAndAppendMessage(message) {
 }
 
 function incrementHeartCount(heartReaction, messageId) {
+  // Prevent double-clicking by checking if button is already processing
+  if (heartReaction.disabled) {
+    return;
+  }
+  
+  // Disable button temporarily to prevent double-clicks
+  heartReaction.disabled = true;
+  heartReaction.style.opacity = '0.6';
+
   const userId = localStorage.getItem("userId") || Date.now();
   localStorage.setItem("userId", userId);
 
@@ -708,6 +718,9 @@ function incrementHeartCount(heartReaction, messageId) {
   // Prevent liking the same message multiple times
   if (likedMessages.includes(messageId)) {
     alert("You've already liked this message.");
+    // Re-enable button
+    heartReaction.disabled = false;
+    heartReaction.style.opacity = '1';
     return;
   }
 
@@ -726,6 +739,12 @@ function incrementHeartCount(heartReaction, messageId) {
     heartCount.innerHTML = parseInt(heartCount.innerHTML) + 1;
   }).catch((error) => {
     console.error('Transaction failed:', error);
+  }).finally(() => {
+    // Re-enable button after transaction completes
+    setTimeout(() => {
+      heartReaction.disabled = false;
+      heartReaction.style.opacity = '1';
+    }, 500); // Small delay to prevent rapid clicking
   });
 }
 
@@ -741,8 +760,9 @@ function showRandomQuote() {
   }, 10000);
 }
 
-// Allows user to drag comments through click input
+// Allows user to drag comments through click input and touch
 function makeDraggable(element) {
+  // Desktop drag and drop
   element.setAttribute("draggable", true);
   element.addEventListener(
     "dragstart",
@@ -752,6 +772,70 @@ function makeDraggable(element) {
     },
     false
   );
+
+  // Mobile touch support
+  let isDragging = false;
+  let startX, startY, initialX, initialY;
+
+  // Touch start
+  element.addEventListener('touchstart', (e) => {
+    // Don't start dragging if touching a button (like the like button)
+    if (e.target.closest('.reaction')) {
+      return;
+    }
+    
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    
+    const rect = element.getBoundingClientRect();
+    initialX = rect.left;
+    initialY = rect.top;
+    
+    // Add a small delay to distinguish between tap and drag
+    setTimeout(() => {
+      if (Math.abs(touch.clientX - startX) > 5 || Math.abs(touch.clientY - startY) > 5) {
+        isDragging = true;
+        element.style.transition = 'none';
+        element.style.zIndex = '1000';
+        element.style.transform = 'rotate(0deg) scale(1.05)';
+      }
+    }, 100);
+    
+    e.preventDefault(); // Prevent scrolling
+  }, { passive: false });
+
+  // Touch move
+  element.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    
+    const newX = initialX + deltaX;
+    const newY = initialY + deltaY;
+    
+    element.style.left = `${newX}px`;
+    element.style.top = `${newY}px`;
+    
+    e.preventDefault(); // Prevent scrolling
+  }, { passive: false });
+
+  // Touch end
+  element.addEventListener('touchend', (e) => {
+    if (!isDragging) return;
+    
+    isDragging = false;
+    element.style.transition = 'all 0.3s ease';
+    element.style.zIndex = 'auto';
+    element.style.transform = 'rotate(-1deg)';
+    
+    // Save position to localStorage
+    const rect = element.getBoundingClientRect();
+    const position = { x: rect.left, y: rect.top };
+    localStorage.setItem(element.id, JSON.stringify(position));
+  });
 
   // On load, position the element based on saved positions in localStorage
   const savedPosition = localStorage.getItem(element.id);
