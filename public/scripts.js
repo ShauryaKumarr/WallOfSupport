@@ -339,6 +339,11 @@ function toggleTopContributors() {
   const topContributors = document.getElementById('topContributors');
   const topContributorsList = document.getElementById('topContributorsList');
   
+  if (!topContributors || !topContributorsList) {
+    console.error('Top contributors elements not found');
+    return;
+  }
+  
   topContributors.classList.toggle('top-contributors-expanded');
   
   if (topContributors.classList.contains('top-contributors-expanded')) {
@@ -355,30 +360,63 @@ function toggleTopContributors() {
 }
 
 function displayTopContributors() {
-  const userStatsRef = ref(database, 'userStats');
+  // Directly count from messages since it's more reliable
+  countContributorsFromMessages();
+}
 
-  onValue(userStatsRef, (snapshot) => {
+// Count contributors from messages directly 
+function countContributorsFromMessages() {
+  const messagesRef = ref(database, 'messages');
+  
+  onValue(messagesRef, (snapshot) => {
     const topContributorsList = document.getElementById('topContributorsList');
+    if (!topContributorsList) {
+      return;
+    }
+    
     topContributorsList.innerHTML = '';
     const contributors = {};
 
-    snapshot.forEach((childSnapshot) => {
-      const username = childSnapshot.key;
-      const userData = childSnapshot.val();
-      const postCount = userData.totalPosts || 0;
-      
-      if (postCount > 0) {
-        contributors[username] = postCount;
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        const messageData = childSnapshot.val();
+        const username = messageData?.username || 'Anonymous';
+        
+        if (username && username !== 'Anonymous') {
+          contributors[username] = (contributors[username] || 0) + 1;
+        }
+      });
+
+      const sortedContributors = Object.entries(contributors).sort((a, b) => b[1] - a[1]);
+
+      if (sortedContributors.length > 0) {
+        sortedContributors.slice(0, 5).forEach(([username, contributions], index) => {
+          const listItem = document.createElement('li');
+          listItem.textContent = `${index + 1}. ${username}: ${contributions} post${contributions === 1 ? '' : 's'}`;
+          topContributorsList.appendChild(listItem);
+        });
+      } else {
+        // Show message when no contributors yet
+        const listItem = document.createElement('li');
+        listItem.textContent = 'No contributors yet. Be the first!';
+        listItem.style.fontStyle = 'italic';
+        listItem.style.color = 'var(--text-muted)';
+        topContributorsList.appendChild(listItem);
       }
-    });
-
-    const sortedContributors = Object.entries(contributors).sort((a, b) => b[1] - a[1]);
-
-    sortedContributors.slice(0, 5).forEach(([username, contributions], index) => {
+    } else {
+      // Show message when no messages exist
       const listItem = document.createElement('li');
-      listItem.textContent = `${index + 1}. ${username}: ${contributions} posts`;
+      listItem.textContent = 'No contributors yet. Be the first!';
+      listItem.style.fontStyle = 'italic';
+      listItem.style.color = 'var(--text-muted)';
       topContributorsList.appendChild(listItem);
-    });
+    }
+  }, (error) => {
+    console.error('Error loading contributors:', error);
+    const topContributorsList = document.getElementById('topContributorsList');
+    if (topContributorsList) {
+      topContributorsList.innerHTML = '<li style="color: var(--text-muted); font-style: italic;">Unable to load contributors</li>';
+    }
   });
 }
 
@@ -389,6 +427,48 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingSpinner.classList.add("hidden");
   }
 });
+
+// Handle viewport changes and ensure messages stay visible
+function handleViewportChange() {
+  const wall = document.getElementById("messages");
+  const messages = wall.querySelectorAll('.message');
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  messages.forEach(message => {
+    const rect = message.getBoundingClientRect();
+    let x = parseInt(message.style.left) || 0;
+    let y = parseInt(message.style.top) || 0;
+    let needsReposition = false;
+    
+    // Check if message is outside viewport bounds
+    if (x < 0 || x + 300 > viewportWidth) {
+      x = Math.max(20, Math.min(viewportWidth - 320, x));
+      needsReposition = true;
+    }
+    
+    if (y < 0 || y + 150 > viewportHeight - 100) {
+      y = Math.max(20, Math.min(viewportHeight - 170, y));
+      needsReposition = true;
+    }
+    
+    if (needsReposition) {
+      message.style.left = `${x}px`;
+      message.style.top = `${y}px`;
+      
+      // Update localStorage with new position
+      const position = { x, y };
+      localStorage.setItem(message.id, JSON.stringify(position));
+    }
+  });
+  
+  // Update wall container size
+  const minWallWidth = Math.max(viewportWidth, 800);
+  const minWallHeight = Math.max(viewportHeight, 600);
+  
+  wall.style.width = `${minWallWidth}px`;
+  wall.style.height = `${minWallHeight}px`;
+}
 
 window.onload = () => {
   // Ensure loading spinner is hidden
@@ -450,9 +530,36 @@ window.onload = () => {
 
   charCount.textContent = `0/${characterLimit} characters`;
 
-  document.getElementById('topContributorsToggle').addEventListener('click', toggleTopContributors);
+  // Initialize top contributors functionality
+  const topContributorsToggle = document.getElementById('topContributorsToggle');
+  const topContributorsList = document.getElementById('topContributorsList');
+  const topContributors = document.getElementById('topContributors');
+  
+  if (topContributorsToggle && topContributorsList && topContributors) {
+    // Ensure proper initial state
+    topContributors.classList.remove('top-contributors-expanded');
+    topContributors.classList.add('top-contributors-collapsed');
+    topContributorsList.classList.add('hidden');
+    topContributorsList.style.opacity = '0';
+    
+    topContributorsToggle.addEventListener('click', toggleTopContributors);
+  } else {
+    console.error('Top contributors elements not found');
+  }
 
   displayTopContributors();
+  
+  // Handle window resize and orientation changes
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(handleViewportChange, 300);
+  });
+  
+  // Handle device orientation changes (mobile)
+  window.addEventListener('orientationchange', () => {
+    setTimeout(handleViewportChange, 500); // Delay for orientation change to complete
+  });
 };
 
 function showCommentForm() {
@@ -521,15 +628,12 @@ async function addMessage() {
 
     await set(ref(database, `messages/${messageId}`), messageData);
 
-    // Update contributions in a cleaner structure
-    const contributionsRef = ref(database, `userStats/${username}/totalPosts`);
-    await runTransaction(contributionsRef, (currentCount) => {
-      return (currentCount || 0) + 1;
-    });
-
     messageInput.value = "";
     usernameInput.value = "";
     locationInput.value = "";
+
+    // Refresh top contributors after posting (will automatically count from messages)
+    displayTopContributors();
 
     alert('Your message has been posted!');
     hideCommentForm();
@@ -569,6 +673,11 @@ function displayMessages() {
           // Longer delay on mobile for better performance
           const delay = window.innerWidth <= 768 ? 200 : 100;
           setTimeout(() => renderBatch(endIndex), delay);
+        } else {
+          // After all messages are loaded, ensure they're all visible
+          setTimeout(() => {
+            handleViewportChange();
+          }, 500);
         }
       }
 
@@ -642,61 +751,111 @@ function updateExistingMessage(messageElement, messageData) {
   heartCount.innerHTML = messageData.likes || 0;
 }
 
-// random positioning coordinates for message
-function getRandomPosition() {
+// Get viewport-aware positioning for messages
+function getVisiblePosition() {
   const wall = document.getElementById("messages");
-  const wallWidth = wall.offsetWidth;
-  const wallHeight = wall.offsetHeight;
-
-  const randomX = Math.floor(Math.random() * (wallWidth + 250)) - 250;
-  const randomY = Math.floor(Math.random() * wallHeight);
+  const messageWidth = 300; // Default message width
+  const messageHeight = 150; // Approximate message height
+  
+  // Get current viewport size
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  // Calculate safe bounds within viewport (with some padding)
+  const padding = 50;
+  const maxX = Math.max(viewportWidth - messageWidth - padding, messageWidth);
+  const maxY = Math.max(viewportHeight - messageHeight - padding, messageHeight);
+  
+  // Ensure minimum bounds
+  const minX = padding;
+  const minY = padding;
+  
+  // Generate random position within safe visible bounds
+  const randomX = Math.floor(Math.random() * (maxX - minX)) + minX;
+  const randomY = Math.floor(Math.random() * (maxY - minY)) + minY;
 
   return { x: randomX, y: randomY };
 }
 
-// set comment to random location initially
+// Position message in a smart grid-like pattern to avoid overlaps
+function getSmartPosition(existingMessages) {
+  const messageWidth = 380; // Message width + margin (increased spacing)
+  const messageHeight = 220; // Message height + margin (increased spacing)
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const padding = 30; // Increased edge padding
+  
+  // Calculate grid dimensions
+  const cols = Math.floor((viewportWidth - padding) / messageWidth) || 1;
+  const rows = Math.floor((viewportHeight - padding) / messageHeight) || 1;
+  
+  // Try to find an empty grid position first
+  for (let attempts = 0; attempts < 20; attempts++) {
+    const col = Math.floor(Math.random() * cols);
+    const row = Math.floor(Math.random() * rows);
+    
+    const x = col * messageWidth + padding + Math.random() * 60 - 30; // Slightly more random variation
+    const y = row * messageHeight + padding + Math.random() * 60 - 30;
+    
+    // Check if this position is too close to existing messages
+    let tooClose = false;
+    existingMessages.forEach(msg => {
+      const msgRect = msg.getBoundingClientRect();
+      const distance = Math.sqrt(Math.pow(x - msgRect.left, 2) + Math.pow(y - msgRect.top, 2));
+      if (distance < 140) { // Increased minimum distance between messages
+        tooClose = true;
+      }
+    });
+    
+    if (!tooClose) {
+      return { x, y };
+    }
+  }
+  
+  // If no good grid position found, use visible random position
+  return getVisiblePosition();
+}
+
+// set comment to smart location and expand container as needed
 function positionAndAppendMessage(message) {
   const wall = document.getElementById("messages");
-  const { x, y } = getRandomPosition();
+  const existingMessages = wall.querySelectorAll('.message');
   
-  // Adjust position if it's negative
-  const adjustedX = Math.max(0, x);
-  const adjustedY = Math.max(0, y);
+  // Get smart position that avoids overlaps and stays visible
+  const { x, y } = getSmartPosition(existingMessages);
   
-  message.style.left = `${adjustedX}px`;
-  message.style.top = `${adjustedY}px`;
+  message.style.left = `${x}px`;
+  message.style.top = `${y}px`;
 
   wall.appendChild(message);
 
-  // Dynamically expand page if needed
-  const messageBottom = adjustedY + message.offsetHeight;
-  const messageRight = adjustedX + message.offsetWidth;
+  // Ensure wall container is large enough to contain all messages
+  const messageBottom = y + 200; // Message height + some buffer
+  const messageRight = x + 350; // Message width + some buffer
   
-  const currentHeight = wall.offsetHeight;
-  const currentWidth = wall.offsetWidth;
+  // Get current wall dimensions
+  const currentWallHeight = wall.offsetHeight;
+  const currentWallWidth = wall.offsetWidth;
 
-  // Expand right
-  if (messageRight > currentWidth) {
-    wall.style.width = `${messageRight + 200}px`;
+  // Expand wall container if needed
+  if (messageRight > currentWallWidth) {
+    wall.style.width = `${messageRight + 100}px`;
   }
 
-  // Expand bottom
-  if (messageBottom > currentHeight) {
-    wall.style.height = `${messageBottom + 200}px`;
+  if (messageBottom > currentWallHeight) {
+    wall.style.height = `${messageBottom + 100}px`;
   }
-
-  // Expand left
-  if (x < 0) {
-    const newWidth = currentWidth + Math.abs(x) + 200;
-    wall.style.width = `${newWidth}px`;
-    wall.style.marginLeft = `-${Math.abs(x)}px`;
-    
-    // Shift all existing messages to the right
-    const allMessages = wall.querySelectorAll('.message');
-    allMessages.forEach(msg => {
-      const currentLeft = parseInt(msg.style.left);
-      msg.style.left = `${currentLeft + Math.abs(x)}px`;
-    });
+  
+  // Ensure minimum wall size for proper layout
+  const minWallWidth = Math.max(window.innerWidth, 800);
+  const minWallHeight = Math.max(window.innerHeight, 600);
+  
+  if (currentWallWidth < minWallWidth) {
+    wall.style.width = `${minWallWidth}px`;
+  }
+  
+  if (currentWallHeight < minWallHeight) {
+    wall.style.height = `${minWallHeight}px`;
   }
 }
 
@@ -844,8 +1003,8 @@ function makeDraggable(element) {
     element.style.left = `${x}px`;
     element.style.top = `${y}px`;
   } else {
-    // Randomly position if no saved position exists
-    const { x, y } = getRandomPosition();
+    // Use visible positioning if no saved position exists
+    const { x, y } = getVisiblePosition();
     element.style.left = `${x}px`;
     element.style.top = `${y}px`;
   }
