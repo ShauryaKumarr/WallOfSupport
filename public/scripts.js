@@ -588,6 +588,21 @@ window.onload = () => {
 
   // New line to hide the auth modal on page load
   modal.style.display = "none";
+
+  const dragReminder = document.getElementById('dragReminder');
+  
+  // Show the reminder after a short delay
+  setTimeout(() => {
+    dragReminder.style.display = 'block';
+  }, 3000);
+
+  // Hide the reminder after 10 seconds
+  setTimeout(() => {
+    dragReminder.style.opacity = '0';
+    setTimeout(() => {
+      dragReminder.style.display = 'none';
+    }, 500);
+  }, 13000);
 };
 
 function showCommentForm() {
@@ -792,7 +807,8 @@ function getRandomPosition() {
   const wallWidth = wall.offsetWidth;
   const wallHeight = wall.offsetHeight;
 
-  const randomX = Math.floor(Math.random() * (wallWidth + 250)) - 250; // Allow negative values
+  // Start from the left border and allow positive X values only
+  const randomX = Math.floor(Math.random() * wallWidth);
   const randomY = Math.floor(Math.random() * wallHeight);
 
   return { x: randomX, y: randomY };
@@ -802,20 +818,16 @@ function getRandomPosition() {
 function positionAndAppendMessage(message) {
   const wall = document.getElementById("messages");
   const { x, y } = getRandomPosition();
-  
-  // Adjust position if it's negative
-  const adjustedX = Math.max(0, x);
-  const adjustedY = Math.max(0, y);
-  
-  message.style.left = `${adjustedX}px`;
-  message.style.top = `${adjustedY}px`;
+
+  message.style.left = `${x}px`;
+  message.style.top = `${y}px`;
 
   wall.appendChild(message);
 
   // Dynamically expand page if needed
-  const messageBottom = adjustedY + message.offsetHeight;
-  const messageRight = adjustedX + message.offsetWidth;
-  
+  const messageBottom = y + message.offsetHeight;
+  const messageRight = x + message.offsetWidth;
+
   const currentHeight = wall.offsetHeight;
   const currentWidth = wall.offsetWidth;
 
@@ -827,20 +839,6 @@ function positionAndAppendMessage(message) {
   // Expand bottom
   if (messageBottom > currentHeight) {
     wall.style.height = `${messageBottom + 200}px`;
-  }
-
-  // Expand left
-  if (x < 0) {
-    const newWidth = currentWidth + Math.abs(x) + 200;
-    wall.style.width = `${newWidth}px`;
-    wall.style.marginLeft = `-${Math.abs(x)}px`;
-    
-    // Shift all existing messages to the right
-    const allMessages = wall.querySelectorAll('.message');
-    allMessages.forEach(msg => {
-      const currentLeft = parseInt(msg.style.left);
-      msg.style.left = `${currentLeft + Math.abs(x)}px`;
-    });
   }
 }
 
