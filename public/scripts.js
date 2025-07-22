@@ -67,6 +67,32 @@ async function checkSentiment(messageText) {
   }
 }
 
+// Perform content analysis in background (non-blocking)
+async function performBackgroundContentAnalysis(messageText) {
+  // Run these checks in the background - they won't affect the user experience
+  setTimeout(async () => {
+    try {
+      const toxicityScore = await checkToxicity(messageText);
+      if (toxicityScore > 0.7) {
+        console.log('High toxicity detected:', toxicityScore);
+      }
+    } catch (error) {
+      console.log('Background toxicity check failed (non-critical):', error.message);
+    }
+
+    try {
+      const sentimentScore = await checkSentiment(messageText);
+      if (sentimentScore < -0.5) {
+        console.log('Negative sentiment detected:', sentimentScore);
+      } else if (sentimentScore > 0.5) {
+        console.log('Positive sentiment detected:', sentimentScore);
+      }
+    } catch (error) {
+      console.log('Background sentiment check failed (non-critical):', error.message);
+    }
+  }, 1000); // Run after 1 second delay
+}
+
 const countries = [
   { code: "AF", name: "Afghanistan" },
   { code: "AL", name: "Albania" },
@@ -368,56 +394,58 @@ function displayTopContributors() {
 function countContributorsFromMessages() {
   const messagesRef = ref(database, 'messages');
   
-  onValue(messagesRef, (snapshot) => {
-    const topContributorsList = document.getElementById('topContributorsList');
-    if (!topContributorsList) {
-      return;
-    }
-    
-    topContributorsList.innerHTML = '';
-    const contributors = {};
+  try {
+    onValue(messagesRef, (snapshot) => {
+      const topContributorsList = document.getElementById('topContributorsList');
+      if (!topContributorsList) {
+        return;
+      }
+      
+      topContributorsList.innerHTML = '';
+      const contributors = {};
 
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnapshot) => {
-        const messageData = childSnapshot.val();
-        const username = messageData?.username || 'Anonymous';
-        
-        if (username && username !== 'Anonymous') {
-          contributors[username] = (contributors[username] || 0) + 1;
-        }
-      });
-
-      const sortedContributors = Object.entries(contributors).sort((a, b) => b[1] - a[1]);
-
-      if (sortedContributors.length > 0) {
-        sortedContributors.slice(0, 5).forEach(([username, contributions], index) => {
-          const listItem = document.createElement('li');
-          listItem.textContent = `${index + 1}. ${username}: ${contributions} post${contributions === 1 ? '' : 's'}`;
-          topContributorsList.appendChild(listItem);
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          const messageData = childSnapshot.val();
+          const username = messageData?.username || 'Anonymous';
+          
+          if (username && username !== 'Anonymous') {
+            contributors[username] = (contributors[username] || 0) + 1;
+          }
         });
+
+        const sortedContributors = Object.entries(contributors).sort((a, b) => b[1] - a[1]);
+
+        if (sortedContributors.length > 0) {
+          sortedContributors.slice(0, 5).forEach(([username, contributions], index) => {
+            const listItem = document.createElement('li');
+            listItem.textContent = `${index + 1}. ${username}: ${contributions} post${contributions === 1 ? '' : 's'}`;
+            topContributorsList.appendChild(listItem);
+          });
+        } else {
+          // Show message when no contributors yet
+          const listItem = document.createElement('li');
+          listItem.textContent = 'No contributors yet. Be the first!';
+          listItem.style.fontStyle = 'italic';
+          listItem.style.color = 'var(--text-muted)';
+          topContributorsList.appendChild(listItem);
+        }
       } else {
-        // Show message when no contributors yet
+        // Show message when no messages exist
         const listItem = document.createElement('li');
         listItem.textContent = 'No contributors yet. Be the first!';
         listItem.style.fontStyle = 'italic';
         listItem.style.color = 'var(--text-muted)';
         topContributorsList.appendChild(listItem);
       }
-    } else {
-      // Show message when no messages exist
-      const listItem = document.createElement('li');
-      listItem.textContent = 'No contributors yet. Be the first!';
-      listItem.style.fontStyle = 'italic';
-      listItem.style.color = 'var(--text-muted)';
-      topContributorsList.appendChild(listItem);
-    }
-  }, (error) => {
+    });
+  } catch (error) {
     console.error('Error loading contributors:', error);
     const topContributorsList = document.getElementById('topContributorsList');
     if (topContributorsList) {
       topContributorsList.innerHTML = '<li style="color: var(--text-muted); font-style: italic;">Unable to load contributors</li>';
     }
-  });
+  }
 }
 
 // Hide loading spinner immediately when script loads
@@ -560,6 +588,12 @@ window.onload = () => {
   window.addEventListener('orientationchange', () => {
     setTimeout(handleViewportChange, 500); // Delay for orientation change to complete
   });
+
+  // Listen for new messages to update top contributors in real-time
+  const messagesRef = ref(database, 'messages');
+  onValue(messagesRef, () => {
+    displayTopContributors();
+  });
 };
 
 function showCommentForm() {
@@ -600,18 +634,6 @@ async function addMessage() {
     // Show loading spinner
     loadingSpinner.classList.remove("hidden");
 
-    // Optional content checking - never blocks posting
-    const toxicityScore = await checkToxicity(messageText);
-    const sentimentScore = await checkSentiment(messageText);
-    
-    // Log results but don't block posting
-    if (toxicityScore > 0) {
-      console.log('Toxicity Score:', toxicityScore);
-    }
-    if (sentimentScore !== 0) {
-      console.log('Sentiment Score:', sentimentScore);
-    }
-
     const now = new Date();
     const date = now.toLocaleDateString();
     const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -626,20 +648,31 @@ async function addMessage() {
       timestamp: Date.now()
     };
 
+    // Post to Firebase
     await set(ref(database, `messages/${messageId}`), messageData);
 
+    // Clear form only after successful post
     messageInput.value = "";
     usernameInput.value = "";
     locationInput.value = "";
 
-    // Refresh top contributors after posting (will automatically count from messages)
-    displayTopContributors();
+    // Run optional content analysis in background (won't affect user experience)
+    try {
+      performBackgroundContentAnalysis(messageText);
+    } catch (error) {
+      console.log('Background content analysis failed (non-critical):', error.message);
+    }
 
     alert('Your message has been posted!');
     hideCommentForm();
   } catch (error) {
     console.error('Error posting message:', error);
-    alert('An error occurred while posting your message. Please try again.');
+    if (error instanceof TypeError && error.message.includes('Cannot set properties of null')) {
+      console.error('A DOM element required for post-submission actions was not found.');
+      alert('Your message was posted, but there was an issue updating the page. Please refresh to see all changes.');
+    } else {
+      alert('An error occurred while posting your message. Please try again.');
+    }
   } finally {
     // Hide loading spinner
     loadingSpinner.classList.add("hidden");
@@ -648,41 +681,20 @@ async function addMessage() {
 
 function displayMessages() {
   const messagesContainer = document.getElementById("messages");
-  messagesContainer.innerHTML = ""; // Clear all messages before rendering new ones
-
   const messagesRef = ref(database, 'messages/');
+
   onValue(messagesRef, (snapshot) => {
-    const data = snapshot.val();
+    snapshot.forEach((childSnapshot) => {
+      const messageId = childSnapshot.key;
+      const messageData = childSnapshot.val();
+      const existingMessage = document.getElementById(messageId);
 
-    if (data) {
-      const messageIds = Object.keys(data);
-      const totalMessages = messageIds.length;
-      // Smaller batch size for mobile for better performance
-      const batchSize = window.innerWidth <= 768 ? 10 : 20;
-
-      function renderBatch(startIndex) {
-        const endIndex = Math.min(startIndex + batchSize, totalMessages);
-        
-        for (let i = startIndex; i < endIndex; i++) {
-          const messageId = messageIds[i];
-          const messageData = data[messageId];
-          renderMessage(messageId, messageData);
-        }
-
-        if (endIndex < totalMessages) {
-          // Longer delay on mobile for better performance
-          const delay = window.innerWidth <= 768 ? 200 : 100;
-          setTimeout(() => renderBatch(endIndex), delay);
-        } else {
-          // After all messages are loaded, ensure they're all visible
-          setTimeout(() => {
-            handleViewportChange();
-          }, 500);
-        }
+      if (!existingMessage) {
+        renderMessage(messageId, messageData);
+      } else {
+        updateExistingMessage(existingMessage, messageData);
       }
-
-      renderBatch(0);
-    }
+    });
   });
 }
 
@@ -754,17 +766,20 @@ function updateExistingMessage(messageElement, messageData) {
 // Get viewport-aware positioning for messages
 function getVisiblePosition() {
   const wall = document.getElementById("messages");
-  const messageWidth = 300; // Default message width
-  const messageHeight = 150; // Approximate message height
+  const isMobile = window.innerWidth <= 768;
+  const messageWidth = isMobile ? 280 : 300;
+  const messageHeight = isMobile ? 120 : 150;
   
   // Get current viewport size
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   
-  // Calculate safe bounds within viewport (with some padding)
-  const padding = 50;
-  const maxX = Math.max(viewportWidth - messageWidth - padding, messageWidth);
-  const maxY = Math.max(viewportHeight - messageHeight - padding, messageHeight);
+  // Calculate safe bounds within viewport (with appropriate padding for mobile)
+  const padding = isMobile ? 20 : 50;
+  const footerHeight = isMobile ? 120 : 80; // Account for footer
+  
+  const maxX = Math.max(viewportWidth - messageWidth - padding, padding);
+  const maxY = Math.max(viewportHeight - messageHeight - footerHeight - padding, padding);
   
   // Ensure minimum bounds
   const minX = padding;
@@ -779,36 +794,48 @@ function getVisiblePosition() {
 
 // Position message in a smart grid-like pattern to avoid overlaps
 function getSmartPosition(existingMessages) {
-  const messageWidth = 380; // Message width + margin (increased spacing)
-  const messageHeight = 220; // Message height + margin (increased spacing)
+  const isMobile = window.innerWidth <= 768;
+  const messageWidth = isMobile ? 300 : 380; // Message width + margin
+  const messageHeight = isMobile ? 140 : 220; // Message height + margin
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const padding = 30; // Increased edge padding
+  const padding = isMobile ? 15 : 30; // Edge padding
+  const footerHeight = isMobile ? 120 : 80; // Account for footer
   
-  // Calculate grid dimensions
-  const cols = Math.floor((viewportWidth - padding) / messageWidth) || 1;
-  const rows = Math.floor((viewportHeight - padding) / messageHeight) || 1;
+  // For mobile, use a simpler grid with better spacing
+  const availableWidth = viewportWidth - (padding * 2);
+  const availableHeight = viewportHeight - footerHeight - (padding * 2);
+  
+  const cols = Math.max(1, Math.floor(availableWidth / messageWidth));
+  const rows = Math.max(1, Math.floor(availableHeight / messageHeight));
   
   // Try to find an empty grid position first
   for (let attempts = 0; attempts < 20; attempts++) {
     const col = Math.floor(Math.random() * cols);
     const row = Math.floor(Math.random() * rows);
     
-    const x = col * messageWidth + padding + Math.random() * 60 - 30; // Slightly more random variation
-    const y = row * messageHeight + padding + Math.random() * 60 - 30;
+    // Calculate position with better mobile spacing
+    const randomOffset = isMobile ? 20 : 60;
+    const x = col * messageWidth + padding + Math.random() * randomOffset - (randomOffset / 2);
+    const y = row * messageHeight + padding + Math.random() * randomOffset - (randomOffset / 2);
+    
+    // Ensure position stays within bounds
+    const boundedX = Math.max(padding, Math.min(viewportWidth - messageWidth - padding, x));
+    const boundedY = Math.max(padding, Math.min(viewportHeight - messageHeight - footerHeight - padding, y));
     
     // Check if this position is too close to existing messages
+    const minDistance = isMobile ? 80 : 140;
     let tooClose = false;
     existingMessages.forEach(msg => {
       const msgRect = msg.getBoundingClientRect();
-      const distance = Math.sqrt(Math.pow(x - msgRect.left, 2) + Math.pow(y - msgRect.top, 2));
-      if (distance < 140) { // Increased minimum distance between messages
+      const distance = Math.sqrt(Math.pow(boundedX - msgRect.left, 2) + Math.pow(boundedY - msgRect.top, 2));
+      if (distance < minDistance) {
         tooClose = true;
       }
     });
     
     if (!tooClose) {
-      return { x, y };
+      return { x: boundedX, y: boundedY };
     }
   }
   
@@ -934,7 +961,9 @@ function makeDraggable(element) {
 
   // Mobile touch support
   let isDragging = false;
+  let dragStartTime = 0;
   let startX, startY, initialX, initialY;
+  let moveThreshold = 10; // Minimum movement to start dragging
 
   // Touch start
   element.addEventListener('touchstart', (e) => {
@@ -946,54 +975,73 @@ function makeDraggable(element) {
     const touch = e.touches[0];
     startX = touch.clientX;
     startY = touch.clientY;
+    dragStartTime = Date.now();
     
     const rect = element.getBoundingClientRect();
     initialX = rect.left;
     initialY = rect.top;
     
-    // Add a small delay to distinguish between tap and drag
-    setTimeout(() => {
-      if (Math.abs(touch.clientX - startX) > 5 || Math.abs(touch.clientY - startY) > 5) {
-        isDragging = true;
-        element.style.transition = 'none';
-        element.style.zIndex = '1000';
-        element.style.transform = 'rotate(0deg) scale(1.05)';
-      }
-    }, 100);
+    // Prepare for potential drag
+    element.style.transition = 'none';
     
     e.preventDefault(); // Prevent scrolling
   }, { passive: false });
 
   // Touch move
   element.addEventListener('touchmove', (e) => {
-    if (!isDragging) return;
-    
     const touch = e.touches[0];
     const deltaX = touch.clientX - startX;
     const deltaY = touch.clientY - startY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     
-    const newX = initialX + deltaX;
-    const newY = initialY + deltaY;
+    // Start dragging if moved far enough
+    if (!isDragging && distance > moveThreshold) {
+      isDragging = true;
+      element.style.zIndex = '1000';
+      element.style.transform = 'rotate(0deg) scale(1.05)';
+      element.style.boxShadow = 'var(--shadow-xl)';
+    }
     
-    element.style.left = `${newX}px`;
-    element.style.top = `${newY}px`;
+    if (isDragging) {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const messageWidth = element.offsetWidth;
+      const messageHeight = element.offsetHeight;
+      
+      // Calculate new position with boundary constraints
+      let newX = initialX + deltaX;
+      let newY = initialY + deltaY;
+      
+      // Keep within viewport bounds
+      newX = Math.max(10, Math.min(viewportWidth - messageWidth - 10, newX));
+      newY = Math.max(10, Math.min(viewportHeight - messageHeight - 100, newY)); // Account for footer
+      
+      element.style.left = `${newX}px`;
+      element.style.top = `${newY}px`;
+    }
     
     e.preventDefault(); // Prevent scrolling
   }, { passive: false });
 
   // Touch end
   element.addEventListener('touchend', (e) => {
-    if (!isDragging) return;
+    const touchDuration = Date.now() - dragStartTime;
     
-    isDragging = false;
-    element.style.transition = 'all 0.3s ease';
-    element.style.zIndex = 'auto';
-    element.style.transform = 'rotate(-1deg)';
-    
-    // Save position to localStorage
-    const rect = element.getBoundingClientRect();
-    const position = { x: rect.left, y: rect.top };
-    localStorage.setItem(element.id, JSON.stringify(position));
+    if (isDragging) {
+      isDragging = false;
+      element.style.transition = 'all 0.3s ease';
+      element.style.zIndex = 'auto';
+      element.style.transform = 'rotate(-1deg)';
+      element.style.boxShadow = 'var(--shadow-lg)';
+      
+      // Save position to localStorage
+      const rect = element.getBoundingClientRect();
+      const position = { x: rect.left, y: rect.top };
+      localStorage.setItem(element.id, JSON.stringify(position));
+    } else {
+      // If it was a quick tap without dragging, restore transition
+      element.style.transition = 'all 0.3s ease';
+    }
   });
 
   // On load, position the element based on saved positions in localStorage

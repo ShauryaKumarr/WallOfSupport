@@ -232,16 +232,25 @@ button:active {
   overflow: visible;
   padding-bottom: 200px;
   min-height: 60vh;
+  /* Ensure messages container takes full available space */
+  min-width: 100vw;
 }
 
-/* Add bottom margin on mobile to account for footer */
+/* Mobile-specific message container adjustments */
 @media (max-width: 768px) {
   #messages {
     margin-bottom: 150px;
+    min-height: 70vh;
+    /* Enable hardware acceleration for better touch performance */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
   }
   
   body {
-    padding-bottom: 0; /* Remove default padding */
+    padding-bottom: 0;
+    /* Improve scrolling on mobile */
+    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
   }
 }
 
@@ -727,16 +736,37 @@ button:active {
   }
   
   .message {
-    width: 280px;
+    width: 280px !important;
+    max-width: calc(100vw - 40px);
     padding: 1rem 1rem 3.5rem 1rem;
     min-height: 120px;
     font-size: 0.9rem;
+    /* Improve touch interactions */
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    /* Better mobile appearance */
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  
+  .message:active {
+    transform: rotate(0deg) scale(1.02);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
   }
   
   .reaction {
-    padding: 0.6rem 1rem;
+    padding: 0.7rem 1.2rem;
     font-size: 0.9rem;
     min-height: 44px; /* Apple's recommended touch target */
+    min-width: 44px;
+    /* Better touch target */
+    border-radius: 25px;
+  }
+  
+  .reaction:active {
+    transform: scale(1.1);
+    background: linear-gradient(135deg, var(--success-color) 0%, var(--secondary-color) 100%);
   }
   
   #quoteContainer {
@@ -909,10 +939,26 @@ button:active {
 @media (hover: none) and (pointer: coarse) {
   /* This targets touch devices */
   
+  .message {
+    /* Allow vertical scrolling but enable horizontal dragging */
+    touch-action: pan-y;
+    /* Improve visual feedback */
+    transition: transform 0.1s ease;
+  }
+  
   .message:hover {
     /* Disable hover effects on touch devices */
     transform: rotate(-1deg);
     box-shadow: var(--shadow-lg);
+  }
+  
+  .reaction {
+    /* Allow normal touch interaction for buttons */
+    touch-action: manipulation;
+    /* Make touch targets larger */
+    min-width: 80px;
+    min-height: 44px;
+    padding: 0.7rem 1rem;
   }
   
   .reaction:hover {
@@ -936,15 +982,16 @@ button:active {
     box-shadow: var(--shadow-md);
   }
   
-  /* Make touch targets larger */
-  .reaction {
-    min-width: 80px;
-    min-height: 44px;
-    padding: 0.7rem 1rem;
-  }
-  
   #addCommentButton, button {
     min-height: 48px;
+    /* Normal touch behavior for buttons */
+    touch-action: manipulation;
+  }
+  
+  /* Better scrolling behavior */
+  body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 }
 
