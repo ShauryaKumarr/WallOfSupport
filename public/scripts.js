@@ -516,43 +516,39 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 5000);
 });
 
-// Handle viewport changes and ensure messages stay visible
+// Handle viewport changes and ensure wall container is sized properly
 function handleViewportChange() {
   const wall = document.getElementById("messages");
+  if (!wall) return;
+  
   const messages = wall.querySelectorAll('.message');
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  const isMobile = viewportWidth <= 768;
+  
+  // Find the furthest message position to size wall properly
+  let maxRight = viewportWidth;
+  let maxBottom = viewportHeight;
   
   messages.forEach(message => {
-    const rect = message.getBoundingClientRect();
-    let x = parseInt(message.style.left) || 0;
-    let y = parseInt(message.style.top) || 0;
-    let needsReposition = false;
+    const x = parseInt(message.style.left) || 0;
+    const y = parseInt(message.style.top) || 0;
+    const messageWidth = isMobile ? 300 : 350;
+    const messageHeight = 200;
     
-    // Check if message is outside viewport bounds
-    if (x < 0 || x + 300 > viewportWidth) {
-      x = Math.max(20, Math.min(viewportWidth - 320, x));
-      needsReposition = true;
-    }
+    maxRight = Math.max(maxRight, x + messageWidth + 50);
+    maxBottom = Math.max(maxBottom, y + messageHeight + 50);
     
-    if (y < 0 || y + 150 > viewportHeight - 100) {
-      y = Math.max(20, Math.min(viewportHeight - 170, y));
-      needsReposition = true;
-    }
-    
-    if (needsReposition) {
-      message.style.left = `${x}px`;
-      message.style.top = `${y}px`;
-      
-      // Update localStorage with new position
-      const position = { x, y };
-      localStorage.setItem(message.id, JSON.stringify(position));
+    // Only reposition if message is off the left edge
+    if (x < 10) {
+      message.style.left = '20px';
+      localStorage.setItem(message.id, JSON.stringify({ x: 20, y }));
     }
   });
   
   // Update wall container size
-  const minWallWidth = Math.max(viewportWidth, 800);
-  const minWallHeight = Math.max(viewportHeight, 600);
+  const minWallWidth = Math.max(viewportWidth, maxRight, 800);
+  const minWallHeight = Math.max(viewportHeight, maxBottom, 800);
   
   wall.style.width = `${minWallWidth}px`;
   wall.style.height = `${minWallHeight}px`;
@@ -887,94 +883,87 @@ function updateExistingMessage(messageElement, messageData) {
 // Get viewport-aware positioning for messages
 function getVisiblePosition() {
   const isMobile = window.innerWidth <= 768;
+  const messageWidth = isMobile ? 280 : 300;
+  const messageHeight = isMobile ? 130 : 150;
   
-  // On mobile, use vertical stacking instead of random positioning
-  if (isMobile) {
-    const wall = document.getElementById("messages");
-    const existingMessages = wall.querySelectorAll('.message');
-    const messageHeight = 180; // Approximate message height with spacing
-    const topOffset = 20;
-    
-    // Stack messages vertically
-    const y = topOffset + (existingMessages.length * messageHeight);
-    
-    return { x: 0, y: y };
-  }
-  
-  // Desktop: random positioning
-  const messageWidth = 300;
-  const messageHeight = 150;
+  // Get current viewport and scroll position
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const padding = 50;
-  const footerHeight = 80;
+  const scrollX = window.scrollX || 0;
+  const scrollY = window.scrollY || 0;
   
-  const maxX = Math.max(viewportWidth - messageWidth - padding, padding);
-  const maxY = Math.max(viewportHeight - messageHeight - footerHeight - padding, padding);
-  const minX = padding;
-  const minY = padding;
+  // Calculate safe bounds
+  const padding = isMobile ? 20 : 50;
+  const footerHeight = isMobile ? 100 : 80;
   
-  const randomX = Math.floor(Math.random() * (maxX - minX)) + minX;
-  const randomY = Math.floor(Math.random() * (maxY - minY)) + minY;
+  // For mobile, position within scrollable area
+  const minX = scrollX + padding;
+  const maxX = scrollX + viewportWidth - messageWidth - padding;
+  const minY = scrollY + padding + 200; // After header
+  const maxY = scrollY + viewportHeight - messageHeight - footerHeight;
+  
+  // Generate random position within safe bounds
+  const randomX = Math.floor(Math.random() * Math.max(1, maxX - minX)) + minX;
+  const randomY = Math.floor(Math.random() * Math.max(1, maxY - minY)) + minY;
 
-  return { x: randomX, y: randomY };
+  return { x: Math.max(padding, randomX), y: Math.max(minY, randomY) };
 }
 
 // Position message in a smart grid-like pattern to avoid overlaps
 function getSmartPosition(existingMessages) {
   const isMobile = window.innerWidth <= 768;
-  
-  // On mobile, use simple vertical stacking
-  if (isMobile) {
-    const messageHeight = 180; // Message height + spacing
-    const topOffset = 20;
-    const y = topOffset + (existingMessages.length * messageHeight);
-    return { x: 0, y: y };
-  }
-  
-  // Desktop: smart grid positioning
-  const messageWidth = 380; // Message width + margin
-  const messageHeight = 220; // Message height + margin
+  const messageWidth = isMobile ? 300 : 380;
+  const messageHeight = isMobile ? 180 : 220;
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const padding = 30;
-  const footerHeight = 80;
+  const padding = isMobile ? 20 : 30;
+  const footerHeight = isMobile ? 100 : 80;
+  const headerOffset = isMobile ? 350 : 400; // Space for header
   
-  const availableWidth = viewportWidth - (padding * 2);
-  const availableHeight = viewportHeight - footerHeight - (padding * 2);
+  // Calculate grid
+  const availableWidth = Math.max(viewportWidth * 2, 800) - (padding * 2);
+  const availableHeight = Math.max(viewportHeight * 2, 600) - footerHeight - headerOffset;
   
   const cols = Math.max(1, Math.floor(availableWidth / messageWidth));
-  const rows = Math.max(1, Math.floor(availableHeight / messageHeight));
+  const rows = Math.max(2, Math.floor(availableHeight / messageHeight));
   
   // Try to find an empty grid position
-  for (let attempts = 0; attempts < 20; attempts++) {
+  for (let attempts = 0; attempts < 30; attempts++) {
     const col = Math.floor(Math.random() * cols);
     const row = Math.floor(Math.random() * rows);
     
-    const randomOffset = 60;
-    const x = col * messageWidth + padding + Math.random() * randomOffset - (randomOffset / 2);
-    const y = row * messageHeight + padding + Math.random() * randomOffset - (randomOffset / 2);
-    
-    const boundedX = Math.max(padding, Math.min(viewportWidth - messageWidth - padding, x));
-    const boundedY = Math.max(padding, Math.min(viewportHeight - messageHeight - footerHeight - padding, y));
+    const randomOffset = isMobile ? 30 : 60;
+    const x = col * messageWidth + padding + Math.random() * randomOffset;
+    const y = headerOffset + row * messageHeight + padding + Math.random() * randomOffset;
     
     // Check if too close to existing messages
-    const minDistance = 140;
+    const minDistance = isMobile ? 100 : 140;
     let tooClose = false;
+    
     existingMessages.forEach(msg => {
-      const msgRect = msg.getBoundingClientRect();
-      const distance = Math.sqrt(Math.pow(boundedX - msgRect.left, 2) + Math.pow(boundedY - msgRect.top, 2));
+      const msgX = parseInt(msg.style.left) || 0;
+      const msgY = parseInt(msg.style.top) || 0;
+      const distance = Math.sqrt(Math.pow(x - msgX, 2) + Math.pow(y - msgY, 2));
       if (distance < minDistance) {
         tooClose = true;
       }
     });
     
     if (!tooClose) {
-      return { x: boundedX, y: boundedY };
+      return { x: Math.max(padding, x), y: Math.max(headerOffset, y) };
     }
   }
   
-  // Fallback to visible position
+  // Fallback: stack below existing messages
+  const lastMessage = existingMessages[existingMessages.length - 1];
+  if (lastMessage) {
+    const lastY = parseInt(lastMessage.style.top) || headerOffset;
+    return { 
+      x: padding + Math.random() * (viewportWidth - messageWidth - padding * 2), 
+      y: lastY + messageHeight + 20 
+    };
+  }
+  
   return getVisiblePosition();
 }
 
@@ -987,54 +976,37 @@ function positionAndAppendMessage(message) {
   // Get smart position that avoids overlaps and stays visible
   const { x, y } = getSmartPosition(existingMessages);
   
-  if (isMobile) {
-    // Mobile: use relative positioning with vertical stacking
-    message.style.position = 'relative';
-    message.style.left = 'auto';
-    message.style.top = 'auto';
-    message.style.margin = '1rem auto';
-    message.style.transform = 'rotate(0deg)';
-  } else {
-    // Desktop: absolute positioning
-    message.style.left = `${x}px`;
-    message.style.top = `${y}px`;
-  }
+  // Always use absolute positioning
+  message.style.position = 'absolute';
+  message.style.left = `${x}px`;
+  message.style.top = `${y}px`;
 
   wall.appendChild(message);
 
   // Ensure wall container is large enough to contain all messages
-  if (isMobile) {
-    // Mobile: container grows naturally with content
-    const messageCount = existingMessages.length + 1;
-    const messageHeight = 180;
-    const minHeight = messageCount * messageHeight + 100;
-    wall.style.minHeight = `${minHeight}px`;
-    wall.style.width = '100%';
-  } else {
-    // Desktop: expand container as before
-    const messageBottom = y + 200;
-    const messageRight = x + 350;
-    const currentWallHeight = wall.offsetHeight;
-    const currentWallWidth = wall.offsetWidth;
+  const messageBottom = y + 250;
+  const messageRight = x + (isMobile ? 320 : 400);
+  const currentWallHeight = wall.offsetHeight;
+  const currentWallWidth = wall.offsetWidth;
 
-    if (messageRight > currentWallWidth) {
-      wall.style.width = `${messageRight + 100}px`;
-    }
+  if (messageRight > currentWallWidth) {
+    wall.style.width = `${messageRight + 50}px`;
+  }
 
-    if (messageBottom > currentWallHeight) {
-      wall.style.height = `${messageBottom + 100}px`;
-    }
-    
-    const minWallWidth = Math.max(window.innerWidth, 800);
-    const minWallHeight = Math.max(window.innerHeight, 600);
-    
-    if (currentWallWidth < minWallWidth) {
-      wall.style.width = `${minWallWidth}px`;
-    }
-    
-    if (currentWallHeight < minWallHeight) {
-      wall.style.height = `${minWallHeight}px`;
-    }
+  if (messageBottom > currentWallHeight) {
+    wall.style.height = `${messageBottom + 50}px`;
+  }
+  
+  // Minimum sizes
+  const minWallWidth = Math.max(window.innerWidth, 800);
+  const minWallHeight = Math.max(window.innerHeight, 800);
+  
+  if (currentWallWidth < minWallWidth) {
+    wall.style.width = `${minWallWidth}px`;
+  }
+  
+  if (currentWallHeight < minWallHeight) {
+    wall.style.height = `${minWallHeight}px`;
   }
 }
 
@@ -1116,9 +1088,6 @@ function showRandomQuote() {
 
 // Allows user to drag comments through click input and touch
 function makeDraggable(element) {
-  // Check if mobile device once at function start
-  const isMobileDevice = window.innerWidth <= 768;
-  
   // Desktop drag and drop
   element.setAttribute("draggable", true);
   element.addEventListener(
@@ -1130,98 +1099,124 @@ function makeDraggable(element) {
     false
   );
 
-  // Mobile touch support - Disabled on mobile for better scrolling
-  if (!isMobileDevice) {
-    // Only enable dragging on desktop/tablet
-    let isDragging = false;
-    let dragStartTime = 0;
-    let startX, startY, initialX, initialY;
-    let moveThreshold = 10;
+  // Touch support for mobile
+  let isDragging = false;
+  let startX, startY, initialX, initialY;
+  let moveThreshold = 8;
+  let hasMoved = false;
 
-    // Touch start
-    element.addEventListener('touchstart', (e) => {
-      if (e.target.closest('.reaction')) {
-        return;
-      }
-      
-      const touch = e.touches[0];
-      startX = touch.clientX;
-      startY = touch.clientY;
-      dragStartTime = Date.now();
-      
-      const rect = element.getBoundingClientRect();
-      initialX = rect.left;
-      initialY = rect.top;
-      
-      element.style.transition = 'none';
-    }, { passive: true });
+  // Touch start
+  element.addEventListener('touchstart', (e) => {
+    // Don't start dragging if touching a button (like the like button)
+    if (e.target.closest('.reaction') || e.target.closest('button')) {
+      return;
+    }
+    
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    hasMoved = false;
+    
+    // Get current position from style
+    initialX = parseInt(element.style.left) || 0;
+    initialY = parseInt(element.style.top) || 0;
+    
+    // Prepare for drag
+    element.style.transition = 'none';
+    element.style.zIndex = '1000';
+    
+  }, { passive: true });
 
-    // Touch move
-    element.addEventListener('touchmove', (e) => {
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - startX;
-      const deltaY = touch.clientY - startY;
-      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  // Touch move
+  element.addEventListener('touchmove', (e) => {
+    if (e.target.closest('.reaction') || e.target.closest('button')) {
+      return;
+    }
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // Start dragging if moved far enough
+    if (distance > moveThreshold) {
+      isDragging = true;
+      hasMoved = true;
       
-      if (!isDragging && distance > moveThreshold) {
-        isDragging = true;
-        element.style.zIndex = '1000';
-        element.style.transform = 'rotate(0deg) scale(1.05)';
-        element.style.boxShadow = 'var(--shadow-xl)';
-      }
+      element.style.transform = 'rotate(0deg) scale(1.03)';
+      element.style.boxShadow = 'var(--shadow-xl)';
       
-      if (isDragging) {
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const messageWidth = element.offsetWidth;
-        const messageHeight = element.offsetHeight;
-        
-        let newX = initialX + deltaX;
-        let newY = initialY + deltaY;
-        
-        newX = Math.max(10, Math.min(viewportWidth - messageWidth - 10, newX));
-        newY = Math.max(10, Math.min(viewportHeight - messageHeight - 100, newY));
-        
-        element.style.left = `${newX}px`;
-        element.style.top = `${newY}px`;
-        
-        e.preventDefault();
-      }
-    }, { passive: false });
+      // Calculate new position
+      let newX = initialX + deltaX;
+      let newY = initialY + deltaY;
+      
+      // Keep within reasonable bounds (allow some overflow for scrolling)
+      newX = Math.max(10, newX);
+      newY = Math.max(10, newY);
+      
+      element.style.left = `${newX}px`;
+      element.style.top = `${newY}px`;
+      
+      // Prevent scrolling while dragging
+      e.preventDefault();
+    }
+  }, { passive: false });
 
-    // Touch end
-    element.addEventListener('touchend', (e) => {
-      if (isDragging) {
-        isDragging = false;
-        element.style.transition = 'all 0.3s ease';
-        element.style.zIndex = 'auto';
-        element.style.transform = 'rotate(-1deg)';
-        element.style.boxShadow = 'var(--shadow-lg)';
-        
-        const rect = element.getBoundingClientRect();
-        const position = { x: rect.left, y: rect.top };
-        localStorage.setItem(element.id, JSON.stringify(position));
-      } else {
-        element.style.transition = 'all 0.3s ease';
-      }
-    });
-  }
+  // Touch end
+  element.addEventListener('touchend', (e) => {
+    if (isDragging) {
+      isDragging = false;
+      
+      element.style.transition = 'transform 0.2s ease, box-shadow 0.2s ease';
+      element.style.zIndex = 'auto';
+      element.style.transform = 'rotate(-1deg)';
+      element.style.boxShadow = 'var(--shadow-lg)';
+      
+      // Save position to localStorage
+      const x = parseInt(element.style.left) || 0;
+      const y = parseInt(element.style.top) || 0;
+      localStorage.setItem(element.id, JSON.stringify({ x, y }));
+      
+      // Expand wall if needed
+      expandWallIfNeeded(x, y);
+    } else {
+      element.style.transition = 'all 0.3s ease';
+      element.style.zIndex = 'auto';
+    }
+  });
 
-  // On load, position the element based on saved positions in localStorage
-  if (!isMobileDevice) {
-    // Desktop: restore saved positions
-    const savedPosition = localStorage.getItem(element.id);
-    if (savedPosition) {
+  // Restore saved positions
+  const savedPosition = localStorage.getItem(element.id);
+  if (savedPosition) {
+    try {
       const { x, y } = JSON.parse(savedPosition);
       element.style.left = `${x}px`;
       element.style.top = `${y}px`;
-    } else {
-      const { x, y } = getVisiblePosition();
-      element.style.left = `${x}px`;
-      element.style.top = `${y}px`;
+    } catch (e) {
+      // Ignore parse errors
     }
   }
-  // Mobile: positioning is handled by CSS (relative positioning)
+}
+
+// Helper function to expand wall container
+function expandWallIfNeeded(x, y) {
+  const wall = document.getElementById("messages");
+  if (!wall) return;
+  
+  const isMobile = window.innerWidth <= 768;
+  const messageWidth = isMobile ? 300 : 350;
+  const messageHeight = 200;
+  
+  const neededWidth = x + messageWidth + 50;
+  const neededHeight = y + messageHeight + 50;
+  
+  if (neededWidth > wall.offsetWidth) {
+    wall.style.width = `${neededWidth}px`;
+  }
+  
+  if (neededHeight > wall.offsetHeight) {
+    wall.style.height = `${neededHeight}px`;
+  }
 }
 
 function drag_start(event) {
@@ -1290,3 +1285,4 @@ const overlay = document.getElementById("popupOverlay");
 if (overlay) {
   overlay.addEventListener('click', toggleInfoPopup);
 }
+

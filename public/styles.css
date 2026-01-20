@@ -760,12 +760,11 @@ select option {
 #messages {
   position: relative;
   width: 100%;
-  min-height: 60vh;
+  min-width: 100vw;
+  min-height: 100vh;
+  padding: 20px;
   padding-bottom: 200px;
   overflow: visible;
-  /* Better mobile scrolling */
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
 }
 
 /* ============================================
@@ -1154,158 +1153,96 @@ select option {
 /* Mobile (< 480px) */
 @media (max-width: 480px) {
   body {
-    /* Prevent horizontal scroll */
-    overflow-x: hidden;
-    width: 100%;
-    /* Better touch scrolling */
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
   }
   
   #header {
     width: 95%;
-    padding: 1.25rem 1rem;
-    margin: 0.75rem auto;
+    padding: 1.5rem 1rem;
+    margin: 1rem auto;
     border-radius: var(--radius-lg);
   }
   
   .title-text {
-    font-size: 1.75rem;
-    line-height: 1.2;
+    font-size: 1.8rem;
   }
   
   .symbol {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
   }
   
   h1 {
     flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 0.5rem;
+    gap: 8px;
   }
   
   h2 {
     font-size: 1.1rem;
-    margin: 0.25rem 0;
   }
   
   .tagline {
-    font-size: 0.85rem;
-    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
   }
   
   #addCommentButton {
     width: 100%;
-    max-width: none;
+    max-width: 280px;
     padding: 1rem 1.5rem;
-    font-size: 1rem;
-    min-height: 48px; /* Better touch target */
-    touch-action: manipulation;
+    min-height: 48px;
   }
   
   #wall {
-    padding: 1rem;
-    margin-top: 1rem;
-    border-radius: var(--radius-lg);
-  }
-  
-  .form-header h3 {
-    font-size: 1.2rem;
+    padding: 1.25rem;
   }
   
   input, textarea, select {
     padding: 1rem;
     font-size: 16px; /* Prevent zoom on iOS */
-    border-radius: var(--radius-md);
-    /* Better mobile input */
-    -webkit-appearance: none;
-    appearance: none;
-    touch-action: manipulation;
-  }
-  
-  textarea {
-    min-height: 120px;
-    resize: vertical;
-  }
-  
-  #postButton {
-    width: 100%;
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-    min-height: 48px;
-    touch-action: manipulation;
   }
   
   #messages {
-    min-height: 50vh;
-    padding-bottom: 150px;
-    /* Better mobile scrolling */
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    min-height: 100vh;
+    width: 100%;
+    overflow: visible;
+    padding: 20px;
+    padding-bottom: 200px;
   }
   
   .message {
-    width: calc(100vw - 40px) !important;
-    max-width: 320px;
-    padding: 1rem 1rem 3.5rem;
-    min-height: 120px;
+    width: 280px !important;
+    min-width: 280px;
+    padding: 1.25rem 1.25rem 3.5rem;
+    min-height: 130px;
     font-size: 0.9rem;
-    /* Better mobile touch handling */
-    touch-action: pan-y;
+    position: absolute;
+    cursor: grab;
+    touch-action: none;
     user-select: none;
     -webkit-user-select: none;
-    /* Prevent text selection while dragging */
     -webkit-touch-callout: none;
-    /* Better mobile appearance */
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-md);
-    /* Ensure messages stay visible */
-    position: relative !important;
-    left: auto !important;
-    top: auto !important;
-    margin: 1rem auto;
-    transform: rotate(0deg);
   }
   
-  .message:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+  .message:active {
+    cursor: grabbing;
   }
   
   .message::before {
-    top: -16px;
+    top: -18px;
     width: 28px;
     height: 28px;
   }
   
   .reaction {
     min-height: 44px;
-    min-width: 60px;
-    padding: 0.6rem 1rem;
-    font-size: 0.85rem;
-    touch-action: manipulation;
-    /* Better touch target */
-    -webkit-tap-highlight-color: rgba(255, 99, 71, 0.3);
-  }
-  
-  .reaction:active {
-    transform: scale(0.95);
+    padding: 0.6rem 1.2rem;
   }
   
   #infoIcon {
     top: 0.75rem;
     right: 0.75rem;
-    padding: 0.5rem;
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    min-height: 36px;
-  }
-  
-  #infoIcon i {
-    font-size: 16px;
+    padding: 0.6rem;
   }
   
   #infoIcon .hover-text {
@@ -1315,26 +1252,27 @@ select option {
   #topContributors {
     position: fixed;
     top: auto;
-    bottom: 80px;
-    left: 0.75rem;
-    right: 0.75rem;
-    min-width: auto;
-    padding: 0.75rem;
-    font-size: 0.85rem;
-  }
-  
-  #topContributorsToggle {
-    font-size: 0.8rem;
+    bottom: 100px;
+    left: 1rem;
+    right: auto;
+    min-width: 180px;
+    max-width: 220px;
   }
   
   .drag-reminder {
-    display: none; /* Hide on mobile - not needed */
+    position: fixed;
+    top: auto;
+    bottom: 100px;
+    right: 1rem;
+    left: auto;
+    font-size: 0.75rem;
+    padding: 0.6rem 1rem;
   }
   
   #footer {
-    position: relative;
-    padding: 1rem 0;
-    margin-top: 2rem;
+    position: fixed;
+    bottom: 0;
+    padding: 0.75rem 0;
   }
   
   #footer p {
@@ -1342,27 +1280,19 @@ select option {
     margin: 0.2rem 0;
   }
   
-  .footer-social-label {
-    font-size: 0.65rem !important;
-  }
-  
   .social-icons {
     gap: 0.75rem;
-    margin-top: 0.5rem;
   }
   
   .social-icons a {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
-    min-width: 40px;
-    min-height: 40px;
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
   }
   
   .popup {
     width: 95vw;
     max-height: 85vh;
-    border-radius: var(--radius-lg);
   }
   
   .popup-content {
@@ -1371,26 +1301,19 @@ select option {
   
   .popup h3 {
     font-size: 1.3rem;
-    margin-bottom: 1rem;
   }
   
   .popup p {
     font-size: 0.9rem;
-    line-height: 1.6;
   }
   
   #quoteContainer {
     padding: 1rem;
-    margin: 1rem auto;
+    margin: 0.5rem auto;
   }
   
   #quoteText {
     font-size: 0.95rem;
-    line-height: 1.5;
-  }
-  
-  .quote-icon {
-    font-size: 1rem;
   }
   
   #toastContainer {
@@ -1399,30 +1322,6 @@ select option {
     left: 12px;
     width: auto;
     max-width: none;
-  }
-  
-  .toast {
-    padding: 12px 16px;
-    font-size: 0.9rem;
-  }
-  
-  .toast-title {
-    font-size: 0.9rem;
-  }
-  
-  .toast-message {
-    font-size: 0.8rem;
-  }
-  
-  /* Better mobile button interactions */
-  button {
-    -webkit-tap-highlight-color: rgba(210, 105, 30, 0.2);
-    touch-action: manipulation;
-  }
-  
-  /* Prevent double-tap zoom on buttons */
-  a, button {
-    touch-action: manipulation;
   }
 }
 
@@ -1434,12 +1333,20 @@ select option {
   }
   
   .title-text {
-    font-size: 2.4rem;
+    font-size: 2.2rem;
+  }
+  
+  #messages {
+    min-height: 100vh;
+    padding: 20px;
+    overflow: visible;
   }
   
   .message {
-    width: 280px;
+    width: 280px !important;
     min-height: 140px;
+    position: absolute;
+    touch-action: none;
   }
   
   #topContributors {
@@ -1473,103 +1380,56 @@ select option {
   }
   
   .title-text {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
   
   h2 {
-    font-size: 1rem;
-  }
-  
-  .message {
-    width: 240px;
-    min-height: 110px;
-  }
-}
-
-/* Touch devices - Better mobile experience */
-@media (hover: none) and (pointer: coarse) {
-  /* Disable hover effects on touch devices */
-  .message {
-    touch-action: pan-y pinch-zoom;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-  
-  .message:hover {
-    transform: none;
-    box-shadow: var(--shadow-md);
-  }
-  
-  .message:active {
-    transform: scale(0.98);
-    box-shadow: var(--shadow-sm);
-  }
-  
-  .reaction {
-    touch-action: manipulation;
-    min-width: 60px;
-    min-height: 44px;
-    -webkit-tap-highlight-color: rgba(255, 99, 71, 0.3);
-  }
-  
-  .reaction:hover {
-    transform: none;
-  }
-  
-  .reaction:active {
-    transform: scale(0.9);
-  }
-  
-  button {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: rgba(210, 105, 30, 0.2);
-  }
-  
-  button:hover {
-    transform: none;
-  }
-  
-  button:active {
-    transform: scale(0.97);
-  }
-  
-  #addCommentButton:hover {
-    transform: none;
-  }
-  
-  #addCommentButton:active {
-    transform: scale(0.97);
-  }
-  
-  .social-icons a {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2);
-  }
-  
-  .social-icons a:hover {
-    transform: none;
-  }
-  
-  .social-icons a:active {
-    transform: scale(0.9);
-  }
-  
-  #infoIcon:hover {
-    transform: none;
-  }
-  
-  #infoIcon:active {
-    transform: scale(0.95);
-  }
-  
-  /* Better scrolling on touch */
-  body {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+    font-size: 0.95rem;
   }
   
   #messages {
+    min-height: 150vh;
+  }
+  
+  .message {
+    width: 260px !important;
+    min-height: 120px;
+    position: absolute;
+    touch-action: none;
+  }
+  
+  #footer {
+    position: fixed;
+    padding: 0.5rem 0;
+  }
+  
+  #topContributors {
+    bottom: 60px;
+  }
+}
+
+/* Touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .message {
+    touch-action: none;
+    cursor: grab;
+  }
+  
+  .message:active {
+    cursor: grabbing;
+  }
+  
+  .reaction {
+    min-height: 44px;
+    min-width: 70px;
+  }
+  
+  button, a {
+    touch-action: manipulation;
+  }
+  
+  body {
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
   }
 }
 
