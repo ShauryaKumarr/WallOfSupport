@@ -1,8 +1,21 @@
 {
-  "rules": {
-    "messages": {
-      ".read": true,
-      ".write": true
+"rules": {
+  "messages": {
+    ".read": true,
+    ".write": true,
+    "$messageId": {
+      ".validate": "newData.hasChildren(['username','message','location','date','time','likes'])",
+      "likes": { ".write": true }
+    }
+  },
+  "users": {
+    ".read": true,
+    "$uid": {
+      ".write": "$uid === auth.uid",
+      "contributions": {
+        ".validate": "newData.isNumber()"
+      }
     }
   }
-} 
+}
+}

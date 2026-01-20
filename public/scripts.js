@@ -1,7 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, runTransaction, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-// Your web app's Firebase configuration
+// ============================================
+// FIREBASE CONFIGURATION
+// ============================================
+
 const firebaseConfig = {
   apiKey: "AIzaSyCyEqGnnMr0IcvrPs_PcLxvb9Nw1ozE_Xc",
   authDomain: "wallofsupport-22a63.firebaseapp.com",
@@ -16,12 +19,55 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-// DOM elements
-const addCommentButton = document.getElementById('addCommentButton');
-const usernameInput = document.getElementById('usernameInput');
+// ============================================
+// TOAST NOTIFICATION SYSTEM
+// ============================================
 
-// Add comment button listener
-addCommentButton.addEventListener('click', showCommentForm);
+function showToast(type, title, message = '', duration = 4000) {
+  const toastContainer = document.getElementById('toastContainer');
+  if (!toastContainer) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+
+  const icons = {
+    success: 'fa-check',
+    error: 'fa-xmark',
+    warning: 'fa-triangle-exclamation',
+    info: 'fa-circle-info'
+  };
+
+  toast.innerHTML = `
+    <div class="toast-icon">
+      <i class="fas ${icons[type] || icons.info}"></i>
+    </div>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      ${message ? `<div class="toast-message">${message}</div>` : ''}
+    </div>
+    <button class="toast-close" aria-label="Close">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
+
+  const closeBtn = toast.querySelector('.toast-close');
+  closeBtn.addEventListener('click', () => removeToast(toast));
+
+  toastContainer.appendChild(toast);
+
+  // Auto-remove after duration
+  setTimeout(() => removeToast(toast), duration);
+}
+
+function removeToast(toast) {
+  if (!toast) return;
+  toast.classList.add('toast-exit');
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.parentNode.removeChild(toast);
+    }
+  }, 300);
+}
 
 // Check toxicity using Cloud Function (simplified - no auth required)
 async function checkToxicity(messageText) {
@@ -448,12 +494,26 @@ function countContributorsFromMessages() {
   }
 }
 
-// Hide loading spinner immediately when script loads
+// ============================================
+// INITIALIZATION
+// ============================================
+
 document.addEventListener('DOMContentLoaded', () => {
   const loadingSpinner = document.getElementById("loadingSpinner");
   if (loadingSpinner) {
     loadingSpinner.classList.add("hidden");
   }
+  
+  // Hide drag reminder after 5 seconds
+  setTimeout(() => {
+    const dragReminder = document.getElementById("dragReminder");
+    if (dragReminder) {
+      dragReminder.style.opacity = '0';
+      setTimeout(() => {
+        dragReminder.style.display = 'none';
+      }, 400);
+    }
+  }, 5000);
 });
 
 // Handle viewport changes and ensure messages stay visible
@@ -525,38 +585,54 @@ window.onload = () => {
   backButton.addEventListener("click", hideCommentForm);
   postButton.addEventListener("click", addMessage);
   
-  // Add event listener for info icon
+  // Info popup handlers
   const infoIcon = document.getElementById("infoIcon");
   const closePopupButton = document.getElementById("closeInfoPopup");
 
-  // Add hover effect to info icon
-  infoIcon.addEventListener("mouseenter", () => {
-    infoIcon.style.color = '#ff6347';
-  });
-  infoIcon.addEventListener("mouseleave", () => {
-    infoIcon.style.color = '#d2691e';
-  });
+  if (infoIcon) {
+    infoIcon.addEventListener("click", toggleInfoPopup);
+  }
 
-  // Event listener for toggling the popup
-  infoIcon.addEventListener("click", toggleInfoPopup);
+  if (closePopupButton) {
+    closePopupButton.addEventListener("click", toggleInfoPopup);
+  }
 
-  closePopupButton.addEventListener("click", toggleInfoPopup);
+  // Close popup with Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const popup = document.getElementById("infoPopup");
+      if (popup && popup.classList.contains('visible')) {
+        toggleInfoPopup();
+      }
+    }
+  });
 
   const messageInput = document.getElementById("messageInput");
   const charCount = document.getElementById("charCount");
   const characterLimit = 250;
 
-  messageInput.addEventListener("input", function () {
-    const currentLength = messageInput.value.length;
-    charCount.textContent = `${currentLength}/${characterLimit} characters`;
+  const charCountNum = document.getElementById("charCountNum");
+  if (messageInput && charCountNum) {
+    messageInput.addEventListener("input", function () {
+      const currentLength = messageInput.value.length;
+      charCountNum.textContent = currentLength;
 
-    if (currentLength > characterLimit) {
-      messageInput.value = messageInput.value.substring(0, characterLimit);
-      charCount.textContent = `${characterLimit}/${characterLimit} characters`;
-    }
-  });
+      // Update color based on remaining characters
+      const remaining = characterLimit - currentLength;
+      if (remaining < 20) {
+        charCountNum.style.color = 'var(--error)';
+      } else if (remaining < 50) {
+        charCountNum.style.color = 'var(--warning-color)';
+      } else {
+        charCountNum.style.color = 'var(--primary-color)';
+      }
 
-  charCount.textContent = `0/${characterLimit} characters`;
+      if (currentLength > characterLimit) {
+        messageInput.value = messageInput.value.substring(0, characterLimit);
+        charCountNum.textContent = characterLimit;
+      }
+    });
+  }
 
   // Initialize top contributors functionality
   const topContributorsToggle = document.getElementById('topContributorsToggle');
@@ -596,18 +672,61 @@ window.onload = () => {
   });
 };
 
+// ============================================
+// COMMENT FORM MANAGEMENT
+// ============================================
+
 function showCommentForm() {
-  const commentForm = document.getElementById("wall");
-  commentForm.style.display = "flex";
+  const commentFormWrapper = document.getElementById("commentFormWrapper");
   const addCommentButton = document.getElementById("addCommentButton");
-  addCommentButton.style.display = "none";
+  
+  if (commentFormWrapper) {
+    commentFormWrapper.classList.add('open');
+    commentFormWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  
+  if (addCommentButton) {
+    addCommentButton.style.opacity = '0';
+    setTimeout(() => {
+      addCommentButton.style.display = 'none';
+    }, 300);
+  }
+  
+  // Focus first input
+  setTimeout(() => {
+    const usernameInput = document.getElementById("usernameInput");
+    if (usernameInput) usernameInput.focus();
+  }, 400);
 }
 
 function hideCommentForm() {
-  const commentForm = document.getElementById("wall");
-  commentForm.style.display = "none";
+  const commentFormWrapper = document.getElementById("commentFormWrapper");
   const addCommentButton = document.getElementById("addCommentButton");
-  addCommentButton.style.display = "block";
+  
+  if (commentFormWrapper) {
+    commentFormWrapper.classList.remove('open');
+  }
+  
+  if (addCommentButton) {
+    addCommentButton.style.display = 'inline-flex';
+    setTimeout(() => {
+      addCommentButton.style.opacity = '1';
+    }, 50);
+  }
+  
+  // Clear form
+  const messageInput = document.getElementById("messageInput");
+  const usernameInput = document.getElementById("usernameInput");
+  const locationInput = document.getElementById("locationInput");
+  const charCount = document.getElementById("charCount");
+  
+  if (messageInput) messageInput.value = "";
+  if (usernameInput) usernameInput.value = "";
+  if (locationInput) locationInput.value = "";
+  if (charCount) {
+    const charCountNum = document.getElementById("charCountNum");
+    if (charCountNum) charCountNum.textContent = "0";
+  }
 }
 
 async function addMessage() {
@@ -621,12 +740,14 @@ async function addMessage() {
   const username = usernameInput.value.trim() || "Anonymous";
 
   if (!messageText) {
-    alert("Please write a message before posting.");
+    showToast('warning', 'Message Required', 'Please write a message before posting.');
+    messageInput.focus();
     return;
   }
 
   if (!username || username === "") {
-    alert("Please enter your name or username.");
+    showToast('warning', 'Name Required', 'Please enter your name or username.');
+    usernameInput.focus();
     return;
   }
 
@@ -663,15 +784,15 @@ async function addMessage() {
       console.log('Background content analysis failed (non-critical):', error.message);
     }
 
-    alert('Your message has been posted!');
+    showToast('success', 'Message Posted!', 'Your message has been added to the wall.');
     hideCommentForm();
   } catch (error) {
     console.error('Error posting message:', error);
     if (error instanceof TypeError && error.message.includes('Cannot set properties of null')) {
       console.error('A DOM element required for post-submission actions was not found.');
-      alert('Your message was posted, but there was an issue updating the page. Please refresh to see all changes.');
+      showToast('warning', 'Partial Success', 'Your message was posted, but there was an issue updating the page.');
     } else {
-      alert('An error occurred while posting your message. Please try again.');
+      showToast('error', 'Post Failed', 'An error occurred while posting your message. Please try again.');
     }
   } finally {
     // Hide loading spinner
@@ -765,27 +886,34 @@ function updateExistingMessage(messageElement, messageData) {
 
 // Get viewport-aware positioning for messages
 function getVisiblePosition() {
-  const wall = document.getElementById("messages");
   const isMobile = window.innerWidth <= 768;
-  const messageWidth = isMobile ? 280 : 300;
-  const messageHeight = isMobile ? 120 : 150;
   
-  // Get current viewport size
+  // On mobile, use vertical stacking instead of random positioning
+  if (isMobile) {
+    const wall = document.getElementById("messages");
+    const existingMessages = wall.querySelectorAll('.message');
+    const messageHeight = 180; // Approximate message height with spacing
+    const topOffset = 20;
+    
+    // Stack messages vertically
+    const y = topOffset + (existingMessages.length * messageHeight);
+    
+    return { x: 0, y: y };
+  }
+  
+  // Desktop: random positioning
+  const messageWidth = 300;
+  const messageHeight = 150;
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  
-  // Calculate safe bounds within viewport (with appropriate padding for mobile)
-  const padding = isMobile ? 20 : 50;
-  const footerHeight = isMobile ? 120 : 80; // Account for footer
+  const padding = 50;
+  const footerHeight = 80;
   
   const maxX = Math.max(viewportWidth - messageWidth - padding, padding);
   const maxY = Math.max(viewportHeight - messageHeight - footerHeight - padding, padding);
-  
-  // Ensure minimum bounds
   const minX = padding;
   const minY = padding;
   
-  // Generate random position within safe visible bounds
   const randomX = Math.floor(Math.random() * (maxX - minX)) + minX;
   const randomY = Math.floor(Math.random() * (maxY - minY)) + minY;
 
@@ -795,36 +923,43 @@ function getVisiblePosition() {
 // Position message in a smart grid-like pattern to avoid overlaps
 function getSmartPosition(existingMessages) {
   const isMobile = window.innerWidth <= 768;
-  const messageWidth = isMobile ? 300 : 380; // Message width + margin
-  const messageHeight = isMobile ? 140 : 220; // Message height + margin
+  
+  // On mobile, use simple vertical stacking
+  if (isMobile) {
+    const messageHeight = 180; // Message height + spacing
+    const topOffset = 20;
+    const y = topOffset + (existingMessages.length * messageHeight);
+    return { x: 0, y: y };
+  }
+  
+  // Desktop: smart grid positioning
+  const messageWidth = 380; // Message width + margin
+  const messageHeight = 220; // Message height + margin
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const padding = isMobile ? 15 : 30; // Edge padding
-  const footerHeight = isMobile ? 120 : 80; // Account for footer
+  const padding = 30;
+  const footerHeight = 80;
   
-  // For mobile, use a simpler grid with better spacing
   const availableWidth = viewportWidth - (padding * 2);
   const availableHeight = viewportHeight - footerHeight - (padding * 2);
   
   const cols = Math.max(1, Math.floor(availableWidth / messageWidth));
   const rows = Math.max(1, Math.floor(availableHeight / messageHeight));
   
-  // Try to find an empty grid position first
+  // Try to find an empty grid position
   for (let attempts = 0; attempts < 20; attempts++) {
     const col = Math.floor(Math.random() * cols);
     const row = Math.floor(Math.random() * rows);
     
-    // Calculate position with better mobile spacing
-    const randomOffset = isMobile ? 20 : 60;
+    const randomOffset = 60;
     const x = col * messageWidth + padding + Math.random() * randomOffset - (randomOffset / 2);
     const y = row * messageHeight + padding + Math.random() * randomOffset - (randomOffset / 2);
     
-    // Ensure position stays within bounds
     const boundedX = Math.max(padding, Math.min(viewportWidth - messageWidth - padding, x));
     const boundedY = Math.max(padding, Math.min(viewportHeight - messageHeight - footerHeight - padding, y));
     
-    // Check if this position is too close to existing messages
-    const minDistance = isMobile ? 80 : 140;
+    // Check if too close to existing messages
+    const minDistance = 140;
     let tooClose = false;
     existingMessages.forEach(msg => {
       const msgRect = msg.getBoundingClientRect();
@@ -839,7 +974,7 @@ function getSmartPosition(existingMessages) {
     }
   }
   
-  // If no good grid position found, use visible random position
+  // Fallback to visible position
   return getVisiblePosition();
 }
 
@@ -847,42 +982,59 @@ function getSmartPosition(existingMessages) {
 function positionAndAppendMessage(message) {
   const wall = document.getElementById("messages");
   const existingMessages = wall.querySelectorAll('.message');
+  const isMobile = window.innerWidth <= 768;
   
   // Get smart position that avoids overlaps and stays visible
   const { x, y } = getSmartPosition(existingMessages);
   
-  message.style.left = `${x}px`;
-  message.style.top = `${y}px`;
+  if (isMobile) {
+    // Mobile: use relative positioning with vertical stacking
+    message.style.position = 'relative';
+    message.style.left = 'auto';
+    message.style.top = 'auto';
+    message.style.margin = '1rem auto';
+    message.style.transform = 'rotate(0deg)';
+  } else {
+    // Desktop: absolute positioning
+    message.style.left = `${x}px`;
+    message.style.top = `${y}px`;
+  }
 
   wall.appendChild(message);
 
   // Ensure wall container is large enough to contain all messages
-  const messageBottom = y + 200; // Message height + some buffer
-  const messageRight = x + 350; // Message width + some buffer
-  
-  // Get current wall dimensions
-  const currentWallHeight = wall.offsetHeight;
-  const currentWallWidth = wall.offsetWidth;
+  if (isMobile) {
+    // Mobile: container grows naturally with content
+    const messageCount = existingMessages.length + 1;
+    const messageHeight = 180;
+    const minHeight = messageCount * messageHeight + 100;
+    wall.style.minHeight = `${minHeight}px`;
+    wall.style.width = '100%';
+  } else {
+    // Desktop: expand container as before
+    const messageBottom = y + 200;
+    const messageRight = x + 350;
+    const currentWallHeight = wall.offsetHeight;
+    const currentWallWidth = wall.offsetWidth;
 
-  // Expand wall container if needed
-  if (messageRight > currentWallWidth) {
-    wall.style.width = `${messageRight + 100}px`;
-  }
+    if (messageRight > currentWallWidth) {
+      wall.style.width = `${messageRight + 100}px`;
+    }
 
-  if (messageBottom > currentWallHeight) {
-    wall.style.height = `${messageBottom + 100}px`;
-  }
-  
-  // Ensure minimum wall size for proper layout
-  const minWallWidth = Math.max(window.innerWidth, 800);
-  const minWallHeight = Math.max(window.innerHeight, 600);
-  
-  if (currentWallWidth < minWallWidth) {
-    wall.style.width = `${minWallWidth}px`;
-  }
-  
-  if (currentWallHeight < minWallHeight) {
-    wall.style.height = `${minWallHeight}px`;
+    if (messageBottom > currentWallHeight) {
+      wall.style.height = `${messageBottom + 100}px`;
+    }
+    
+    const minWallWidth = Math.max(window.innerWidth, 800);
+    const minWallHeight = Math.max(window.innerHeight, 600);
+    
+    if (currentWallWidth < minWallWidth) {
+      wall.style.width = `${minWallWidth}px`;
+    }
+    
+    if (currentWallHeight < minWallHeight) {
+      wall.style.height = `${minWallHeight}px`;
+    }
   }
 }
 
@@ -903,7 +1055,7 @@ function incrementHeartCount(heartReaction, messageId) {
 
   // Prevent liking the same message multiple times
   if (likedMessages.includes(messageId)) {
-    alert("You've already liked this message.");
+    showToast('info', 'Already Liked', "You've already liked this message.");
     // Re-enable button
     heartReaction.disabled = false;
     heartReaction.style.opacity = '1';
@@ -922,9 +1074,17 @@ function incrementHeartCount(heartReaction, messageId) {
 
     // Update the like count visually
     const heartCount = heartReaction.querySelector(".heart-count");
-    heartCount.innerHTML = parseInt(heartCount.innerHTML) + 1;
+    const newCount = parseInt(heartCount.innerHTML) + 1;
+    heartCount.innerHTML = newCount;
+    
+    // Add a subtle animation
+    heartReaction.style.transform = 'scale(1.2)';
+    setTimeout(() => {
+      heartReaction.style.transform = '';
+    }, 200);
   }).catch((error) => {
     console.error('Transaction failed:', error);
+    showToast('error', 'Like Failed', 'Unable to like this message. Please try again.');
   }).finally(() => {
     // Re-enable button after transaction completes
     setTimeout(() => {
@@ -934,20 +1094,31 @@ function incrementHeartCount(heartReaction, messageId) {
   });
 }
 
-// message initially appears at random location on board
-function showRandomQuote() {
-  const quoteContainer = document.getElementById("quoteContainer");
-  quoteContainer.textContent =
-    quotes[Math.floor(Math.random() * quotes.length)];
+// ============================================
+// QUOTE DISPLAY
+// ============================================
 
-  setInterval(() => {
+function showRandomQuote() {
+  const quoteText = document.getElementById("quoteText");
+  if (!quoteText) return;
+
+  function updateQuote() {
     const randomIndex = Math.floor(Math.random() * quotes.length);
-    quoteContainer.textContent = quotes[randomIndex];
-  }, 10000);
+    quoteText.textContent = quotes[randomIndex];
+  }
+
+  // Show initial quote
+  updateQuote();
+
+  // Update every 10 seconds
+  setInterval(updateQuote, 10000);
 }
 
 // Allows user to drag comments through click input and touch
 function makeDraggable(element) {
+  // Check if mobile device once at function start
+  const isMobileDevice = window.innerWidth <= 768;
+  
   // Desktop drag and drop
   element.setAttribute("draggable", true);
   element.addEventListener(
@@ -959,103 +1130,98 @@ function makeDraggable(element) {
     false
   );
 
-  // Mobile touch support
-  let isDragging = false;
-  let dragStartTime = 0;
-  let startX, startY, initialX, initialY;
-  let moveThreshold = 10; // Minimum movement to start dragging
+  // Mobile touch support - Disabled on mobile for better scrolling
+  if (!isMobileDevice) {
+    // Only enable dragging on desktop/tablet
+    let isDragging = false;
+    let dragStartTime = 0;
+    let startX, startY, initialX, initialY;
+    let moveThreshold = 10;
 
-  // Touch start
-  element.addEventListener('touchstart', (e) => {
-    // Don't start dragging if touching a button (like the like button)
-    if (e.target.closest('.reaction')) {
-      return;
-    }
-    
-    const touch = e.touches[0];
-    startX = touch.clientX;
-    startY = touch.clientY;
-    dragStartTime = Date.now();
-    
-    const rect = element.getBoundingClientRect();
-    initialX = rect.left;
-    initialY = rect.top;
-    
-    // Prepare for potential drag
-    element.style.transition = 'none';
-    
-    e.preventDefault(); // Prevent scrolling
-  }, { passive: false });
-
-  // Touch move
-  element.addEventListener('touchmove', (e) => {
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - startX;
-    const deltaY = touch.clientY - startY;
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    
-    // Start dragging if moved far enough
-    if (!isDragging && distance > moveThreshold) {
-      isDragging = true;
-      element.style.zIndex = '1000';
-      element.style.transform = 'rotate(0deg) scale(1.05)';
-      element.style.boxShadow = 'var(--shadow-xl)';
-    }
-    
-    if (isDragging) {
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const messageWidth = element.offsetWidth;
-      const messageHeight = element.offsetHeight;
+    // Touch start
+    element.addEventListener('touchstart', (e) => {
+      if (e.target.closest('.reaction')) {
+        return;
+      }
       
-      // Calculate new position with boundary constraints
-      let newX = initialX + deltaX;
-      let newY = initialY + deltaY;
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      dragStartTime = Date.now();
       
-      // Keep within viewport bounds
-      newX = Math.max(10, Math.min(viewportWidth - messageWidth - 10, newX));
-      newY = Math.max(10, Math.min(viewportHeight - messageHeight - 100, newY)); // Account for footer
-      
-      element.style.left = `${newX}px`;
-      element.style.top = `${newY}px`;
-    }
-    
-    e.preventDefault(); // Prevent scrolling
-  }, { passive: false });
-
-  // Touch end
-  element.addEventListener('touchend', (e) => {
-    const touchDuration = Date.now() - dragStartTime;
-    
-    if (isDragging) {
-      isDragging = false;
-      element.style.transition = 'all 0.3s ease';
-      element.style.zIndex = 'auto';
-      element.style.transform = 'rotate(-1deg)';
-      element.style.boxShadow = 'var(--shadow-lg)';
-      
-      // Save position to localStorage
       const rect = element.getBoundingClientRect();
-      const position = { x: rect.left, y: rect.top };
-      localStorage.setItem(element.id, JSON.stringify(position));
-    } else {
-      // If it was a quick tap without dragging, restore transition
-      element.style.transition = 'all 0.3s ease';
-    }
-  });
+      initialX = rect.left;
+      initialY = rect.top;
+      
+      element.style.transition = 'none';
+    }, { passive: true });
+
+    // Touch move
+    element.addEventListener('touchmove', (e) => {
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - startX;
+      const deltaY = touch.clientY - startY;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      if (!isDragging && distance > moveThreshold) {
+        isDragging = true;
+        element.style.zIndex = '1000';
+        element.style.transform = 'rotate(0deg) scale(1.05)';
+        element.style.boxShadow = 'var(--shadow-xl)';
+      }
+      
+      if (isDragging) {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const messageWidth = element.offsetWidth;
+        const messageHeight = element.offsetHeight;
+        
+        let newX = initialX + deltaX;
+        let newY = initialY + deltaY;
+        
+        newX = Math.max(10, Math.min(viewportWidth - messageWidth - 10, newX));
+        newY = Math.max(10, Math.min(viewportHeight - messageHeight - 100, newY));
+        
+        element.style.left = `${newX}px`;
+        element.style.top = `${newY}px`;
+        
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // Touch end
+    element.addEventListener('touchend', (e) => {
+      if (isDragging) {
+        isDragging = false;
+        element.style.transition = 'all 0.3s ease';
+        element.style.zIndex = 'auto';
+        element.style.transform = 'rotate(-1deg)';
+        element.style.boxShadow = 'var(--shadow-lg)';
+        
+        const rect = element.getBoundingClientRect();
+        const position = { x: rect.left, y: rect.top };
+        localStorage.setItem(element.id, JSON.stringify(position));
+      } else {
+        element.style.transition = 'all 0.3s ease';
+      }
+    });
+  }
 
   // On load, position the element based on saved positions in localStorage
-  const savedPosition = localStorage.getItem(element.id);
-  if (savedPosition) {
-    const { x, y } = JSON.parse(savedPosition);
-    element.style.left = `${x}px`;
-    element.style.top = `${y}px`;
-  } else {
-    // Use visible positioning if no saved position exists
-    const { x, y } = getVisiblePosition();
-    element.style.left = `${x}px`;
-    element.style.top = `${y}px`;
+  if (!isMobileDevice) {
+    // Desktop: restore saved positions
+    const savedPosition = localStorage.getItem(element.id);
+    if (savedPosition) {
+      const { x, y } = JSON.parse(savedPosition);
+      element.style.left = `${x}px`;
+      element.style.top = `${y}px`;
+    } else {
+      const { x, y } = getVisiblePosition();
+      element.style.left = `${x}px`;
+      element.style.top = `${y}px`;
+    }
   }
+  // Mobile: positioning is handled by CSS (relative positioning)
 }
 
 function drag_start(event) {
@@ -1096,12 +1262,31 @@ function drag_over(event) {
 document.body.addEventListener("dragover", drag_over, false);
 document.body.addEventListener("drop", drop, false);
 
+// ============================================
+// POPUP MANAGEMENT
+// ============================================
+
 function toggleInfoPopup() {
   const popup = document.getElementById("infoPopup");
-  if (popup.style.display === "none" || popup.style.display === "") {
-    popup.style.display = "block";
+  const overlay = document.getElementById("popupOverlay");
+  
+  if (!popup || !overlay) return;
+
+  const isVisible = popup.classList.contains('visible');
+
+  if (isVisible) {
+    popup.classList.remove('visible');
+    overlay.classList.remove('visible');
+    document.body.style.overflow = '';
   } else {
-    popup.style.display = "none";
+    popup.classList.add('visible');
+    overlay.classList.add('visible');
+    document.body.style.overflow = 'hidden';
   }
 }
 
+// Close popup when clicking overlay
+const overlay = document.getElementById("popupOverlay");
+if (overlay) {
+  overlay.addEventListener('click', toggleInfoPopup);
+}
