@@ -972,6 +972,14 @@ function positionAndAppendMessage(message) {
   const wall = document.getElementById("messages");
   const existingMessages = wall.querySelectorAll('.message');
   const isMobile = window.innerWidth <= 768;
+
+  if (isMobile) {
+    message.style.position = 'relative';
+    message.style.left = 'auto';
+    message.style.top = 'auto';
+    wall.appendChild(message);
+    return;
+  }
   
   // Get smart position that avoids overlaps and stays visible
   const { x, y } = getSmartPosition(existingMessages);
@@ -1088,6 +1096,11 @@ function showRandomQuote() {
 
 // Allows user to drag comments through click input and touch
 function makeDraggable(element) {
+  if (window.innerWidth <= 768) {
+    element.setAttribute("draggable", false);
+    return;
+  }
+
   // Desktop drag and drop
   element.setAttribute("draggable", true);
   element.addEventListener(
@@ -1285,4 +1298,3 @@ const overlay = document.getElementById("popupOverlay");
 if (overlay) {
   overlay.addEventListener('click', toggleInfoPopup);
 }
-
