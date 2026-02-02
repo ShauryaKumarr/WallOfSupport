@@ -1153,7 +1153,7 @@ select option {
 /* Mobile (< 480px) */
 @media (max-width: 480px) {
   body {
-    overflow-x: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
   }
   
@@ -1203,29 +1203,36 @@ select option {
   }
   
   #messages {
-    min-height: 100vh;
+    min-height: auto;
     width: 100%;
+    min-width: 0;
     overflow: visible;
-    padding: 20px;
-    padding-bottom: 200px;
+    padding: 16px 16px 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
   }
   
   .message {
-    width: 280px !important;
-    min-width: 280px;
+    width: min(92vw, 320px) !important;
+    min-width: 0;
     padding: 1.25rem 1.25rem 3.5rem;
     min-height: 130px;
     font-size: 0.9rem;
-    position: absolute;
-    cursor: grab;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none;
+    cursor: default;
+    touch-action: manipulation;
+    user-select: text;
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
   }
   
   .message:active {
-    cursor: grabbing;
+    cursor: default;
   }
   
   .message::before {
@@ -1337,16 +1344,23 @@ select option {
   }
   
   #messages {
-    min-height: 100vh;
-    padding: 20px;
+    min-height: auto;
+    padding: 20px 20px 160px;
     overflow: visible;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
   }
   
   .message {
-    width: 280px !important;
+    width: min(86vw, 360px) !important;
     min-height: 140px;
-    position: absolute;
-    touch-action: none;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none;
+    touch-action: manipulation;
   }
   
   #topContributors {
@@ -1388,14 +1402,18 @@ select option {
   }
   
   #messages {
-    min-height: 150vh;
+    min-height: auto;
+    padding: 12px 16px 120px;
   }
   
   .message {
-    width: 260px !important;
+    width: min(80vw, 320px) !important;
     min-height: 120px;
-    position: absolute;
-    touch-action: none;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none;
+    touch-action: manipulation;
   }
   
   #footer {
@@ -1409,14 +1427,14 @@ select option {
 }
 
 /* Touch devices */
-@media (hover: none) and (pointer: coarse) {
+@media (hover: none) and (pointer: coarse) and (max-width: 768px) {
   .message {
-    touch-action: none;
-    cursor: grab;
+    touch-action: manipulation;
+    cursor: default;
   }
   
   .message:active {
-    cursor: grabbing;
+    cursor: default;
   }
   
   .reaction {
