@@ -570,12 +570,34 @@ function handleViewportChange() {
   wall.style.height = `${minWallHeight}px`;
 }
 
+// Clear all inline positioning styles for mobile layout
+function clearMobileInlineStyles() {
+  const isMobile = window.innerWidth <= 767;
+  if (!isMobile) return;
+  
+  const wall = document.getElementById("messages");
+  if (wall) {
+    // Clear wall container inline styles
+    wall.style.cssText = '';
+  }
+  
+  const messages = document.querySelectorAll('.message');
+  messages.forEach(message => {
+    // Clear all inline styles to let CSS take over
+    message.style.cssText = '';
+    message.setAttribute("draggable", false);
+  });
+}
+
 window.onload = () => {
   // Ensure loading spinner is hidden
   const loadingSpinner = document.getElementById("loadingSpinner");
   if (loadingSpinner) {
     loadingSpinner.classList.add("hidden");
   }
+  
+  // Clear any inline styles on mobile
+  clearMobileInlineStyles();
 
   const locationInput = document.getElementById("locationInput");
   countries.forEach((country) => {
@@ -669,12 +691,18 @@ window.onload = () => {
   let resizeTimeout;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(handleViewportChange, 300);
+    resizeTimeout = setTimeout(() => {
+      clearMobileInlineStyles();
+      handleViewportChange();
+    }, 300);
   });
   
   // Handle device orientation changes (mobile)
   window.addEventListener('orientationchange', () => {
-    setTimeout(handleViewportChange, 500); // Delay for orientation change to complete
+    setTimeout(() => {
+      clearMobileInlineStyles();
+      handleViewportChange();
+    }, 500); // Delay for orientation change to complete
   });
 
   // Listen for new messages to update top contributors in real-time
@@ -828,6 +856,12 @@ function displayMessages() {
         updateExistingMessage(existingMessage, messageData);
       }
     });
+    
+    // After rendering all messages, clear inline styles on mobile
+    // Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+      clearMobileInlineStyles();
+    });
   });
 }
 
@@ -878,9 +912,20 @@ function renderMessage(messageId, messageData) {
   reactions.appendChild(heartReaction);
   newMessage.appendChild(reactions);
 
-  makeDraggable(newMessage);
-  positionAndAppendMessage(newMessage);
-  messagesContainer.appendChild(newMessage);
+  // Check if mobile BEFORE any positioning/dragging logic
+  const isMobile = window.innerWidth <= 767;
+  
+  if (isMobile) {
+    // On mobile: clear ALL inline positioning styles to let CSS handle layout
+    newMessage.style.cssText = ''; // Clear all inline styles
+    newMessage.setAttribute("draggable", false);
+    messagesContainer.appendChild(newMessage);
+  } else {
+    // Desktop: use draggable positioning
+    makeDraggable(newMessage);
+    positionAndAppendMessage(newMessage);
+    messagesContainer.appendChild(newMessage);
+  }
 }
 
 function updateExistingMessage(messageElement, messageData) {
