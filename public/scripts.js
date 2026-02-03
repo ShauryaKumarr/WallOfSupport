@@ -521,19 +521,35 @@ function handleViewportChange() {
   const wall = document.getElementById("messages");
   if (!wall) return;
   
-  const messages = wall.querySelectorAll('.message');
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const isMobile = viewportWidth <= 768;
+  const isMobile = viewportWidth <= 767;
   
-  // Find the furthest message position to size wall properly
+  // On mobile, let CSS handle sizing via flexbox - don't set inline styles
+  if (isMobile) {
+    wall.style.width = '';
+    wall.style.height = '';
+    
+    // Clear any saved positions from messages to let CSS position them
+    const messages = wall.querySelectorAll('.message');
+    messages.forEach(message => {
+      message.style.position = '';
+      message.style.left = '';
+      message.style.top = '';
+      message.style.transform = '';
+    });
+    return;
+  }
+  
+  // Desktop: Size wall based on message positions
+  const messages = wall.querySelectorAll('.message');
   let maxRight = viewportWidth;
   let maxBottom = viewportHeight;
   
   messages.forEach(message => {
     const x = parseInt(message.style.left) || 0;
     const y = parseInt(message.style.top) || 0;
-    const messageWidth = isMobile ? 300 : 350;
+    const messageWidth = 350;
     const messageHeight = 200;
     
     maxRight = Math.max(maxRight, x + messageWidth + 50);
@@ -971,12 +987,23 @@ function getSmartPosition(existingMessages) {
 function positionAndAppendMessage(message) {
   const wall = document.getElementById("messages");
   const existingMessages = wall.querySelectorAll('.message');
-  const isMobile = window.innerWidth <= 768;
+  const isMobile = window.innerWidth <= 767;
   
-  // Get smart position that avoids overlaps and stays visible
+  // On mobile, let CSS handle the layout (stacked vertically via flexbox)
+  // Don't set inline position styles that would conflict with CSS
+  if (isMobile) {
+    // Remove any inline positioning styles for mobile
+    message.style.position = '';
+    message.style.left = '';
+    message.style.top = '';
+    message.style.transform = '';
+    wall.appendChild(message);
+    return;
+  }
+  
+  // Desktop: Use smart absolute positioning
   const { x, y } = getSmartPosition(existingMessages);
   
-  // Always use absolute positioning
   message.style.position = 'absolute';
   message.style.left = `${x}px`;
   message.style.top = `${y}px`;
@@ -985,7 +1012,7 @@ function positionAndAppendMessage(message) {
 
   // Ensure wall container is large enough to contain all messages
   const messageBottom = y + 250;
-  const messageRight = x + (isMobile ? 320 : 400);
+  const messageRight = x + 400;
   const currentWallHeight = wall.offsetHeight;
   const currentWallWidth = wall.offsetWidth;
 
@@ -997,7 +1024,7 @@ function positionAndAppendMessage(message) {
     wall.style.height = `${messageBottom + 50}px`;
   }
   
-  // Minimum sizes
+  // Minimum sizes for desktop
   const minWallWidth = Math.max(window.innerWidth, 800);
   const minWallHeight = Math.max(window.innerHeight, 800);
   
@@ -1088,6 +1115,16 @@ function showRandomQuote() {
 
 // Allows user to drag comments through click input and touch
 function makeDraggable(element) {
+  const isMobile = window.innerWidth <= 767;
+  
+  // On mobile, cards are stacked vertically and not draggable
+  // Skip adding drag functionality to keep mobile experience smooth
+  if (isMobile) {
+    element.setAttribute("draggable", false);
+    element.style.cursor = 'default';
+    return;
+  }
+  
   // Desktop drag and drop
   element.setAttribute("draggable", true);
   element.addEventListener(
@@ -1099,7 +1136,7 @@ function makeDraggable(element) {
     false
   );
 
-  // Touch support for mobile
+  // Touch support for tablet (768px and up where dragging is still useful)
   let isDragging = false;
   let startX, startY, initialX, initialY;
   let moveThreshold = 8;
@@ -1185,7 +1222,7 @@ function makeDraggable(element) {
     }
   });
 
-  // Restore saved positions
+  // Restore saved positions (desktop only)
   const savedPosition = localStorage.getItem(element.id);
   if (savedPosition) {
     try {
