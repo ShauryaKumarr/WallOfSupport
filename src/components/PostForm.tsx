@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { postMessage } from '@/lib/db';
-import { moderateContent } from '@/lib/moderation';
+import { moderateContent, hasProfanity } from '@/lib/moderation';
 import { useToast } from '@/context/ToastContext';
 import { countries } from '@/lib/countries';
 
@@ -58,6 +58,12 @@ export default function PostForm({ open, onClose }: Props) {
     }
     if (!trimmedMessage) {
       showToast('warning', 'Message required', 'Please write something before posting.');
+      return;
+    }
+
+    if (hasProfanity(trimmedUsername)) {
+      showToast('error', 'Name not allowed', 'Please choose a name that follows our community guidelines.');
+      usernameRef.current?.focus();
       return;
     }
 

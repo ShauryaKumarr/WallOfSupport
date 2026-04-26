@@ -3,8 +3,27 @@ const TOXICITY_URL =
 const SENTIMENT_URL =
   'https://us-central1-wallofsupport-22a63.cloudfunctions.net/checkSentiment';
 
-const TOXICITY_THRESHOLD = 0.7;
-const SENTIMENT_THRESHOLD = -0.5;
+const TOXICITY_THRESHOLD = 0.4;
+const SENTIMENT_THRESHOLD = -0.3;
+
+const BLOCKED_TERMS = [
+  'fuck', 'fucking', 'fucked', 'fucker',
+  'shit', 'bullshit',
+  'bitch', 'bastard',
+  'ass', 'asshole', 'arse',
+  'cock', 'dick', 'pussy', 'cunt',
+  'whore', 'slut',
+  'nigger', 'nigga',
+  'faggot', 'fag',
+  'retard', 'retarded',
+  'piss', 'pissed',
+  'crap', 'damn', 'damnit',
+];
+
+export function hasProfanity(text: string): boolean {
+  const lower = text.toLowerCase();
+  return BLOCKED_TERMS.some((term) => new RegExp(`\\b${term}\\b`, 'i').test(lower));
+}
 
 export interface ModerationResult {
   passed: boolean;
@@ -12,6 +31,14 @@ export interface ModerationResult {
 }
 
 export async function moderateContent(text: string): Promise<ModerationResult> {
+  if (hasProfanity(text)) {
+    return {
+      passed: false,
+      reason:
+        'Your message contains language that violates our community guidelines. Please keep it respectful.',
+    };
+  }
+
   try {
     const [toxRes, sentRes] = await Promise.all([
       fetch(TOXICITY_URL, {
@@ -47,7 +74,6 @@ export async function moderateContent(text: string): Promise<ModerationResult> {
 
     return { passed: true };
   } catch {
-    // Fail open — if the moderation API is down, allow the post
     return { passed: true };
   }
 }
