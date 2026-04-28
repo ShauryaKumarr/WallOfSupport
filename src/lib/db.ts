@@ -31,6 +31,7 @@ export async function postMessage(
     likes: 0,
   };
   if (data.location) payload.location = data.location;
+  if (data.color) payload.color = data.color;
   await push(ref(db, 'messages'), payload);
 }
 

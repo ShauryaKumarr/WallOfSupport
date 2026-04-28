@@ -3,6 +3,7 @@ export interface Message {
   username: string;
   message: string;
   location?: string;
+  color?: string;
   date: string;
   time: string;
   likes: number;

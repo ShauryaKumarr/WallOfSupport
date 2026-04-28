@@ -6,6 +6,7 @@ import { postMessage } from '@/lib/db';
 import { moderateContent } from '@/lib/moderation';
 import { useToast } from '@/context/ToastContext';
 import { countries } from '@/lib/countries';
+import { NOTE_COLORS, getNoteColor } from '@/lib/noteColors';
 
 interface Props {
   open: boolean;
@@ -19,6 +20,7 @@ export default function PostForm({ open, onClose }: Props) {
   const [username, setUsername] = useState('');
   const [message, setMessage] = useState('');
   const [location, setLocation] = useState('');
+  const [color, setColor] = useState('yellow');
   const [submitting, setSubmitting] = useState(false);
   const usernameRef = useRef<HTMLInputElement>(null);
 
@@ -44,6 +46,7 @@ export default function PostForm({ open, onClose }: Props) {
     setUsername('');
     setMessage('');
     setLocation('');
+    setColor('yellow');
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -70,24 +73,25 @@ export default function PostForm({ open, onClose }: Props) {
       }
 
       const now = new Date();
+      const noteColor = getNoteColor(color);
       await postMessage({
         username: trimmedUsername,
         message: trimmedMessage,
         date: now.toLocaleDateString(),
         time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         timestamp: Date.now(),
+        color,
         ...(location ? { location } : {}),
       });
 
       showToast('success', 'Posted!', 'Your message has been added to the wall.');
       reset();
       onClose();
-      // Celebrate!
       confetti({
-        particleCount: 90,
-        spread: 65,
+        particleCount: 100,
+        spread: 70,
         origin: { y: 0.55 },
-        colors: ['#D97706', '#F59E0B', '#92400E', '#FBBF24', '#FDE68A', '#FEF3C7'],
+        colors: noteColor.confetti,
       });
     } catch {
       showToast('error', 'Post failed', 'Something went wrong. Please try again.');
@@ -180,6 +184,30 @@ export default function PostForm({ open, onClose }: Props) {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Note Color */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">
+              Note Color
+            </label>
+            <div className="flex gap-2.5 flex-wrap">
+              {NOTE_COLORS.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setColor(c.key)}
+                  aria-label={`${c.label} note`}
+                  className={`w-9 h-9 rounded-full transition-all duration-150 ${
+                    color === c.key
+                      ? 'ring-2 ring-offset-2 ring-amber-600 scale-110 shadow-md'
+                      : 'hover:scale-105 shadow-sm'
+                  }`}
+                  style={{ background: c.swatch }}
+                  title={c.label}
+                />
+              ))}
+            </div>
           </div>
 
           {/* Submit */}

@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "wallofsupport-22a63",
     "public": "out",
     "ignore": [
       "firebase.json",

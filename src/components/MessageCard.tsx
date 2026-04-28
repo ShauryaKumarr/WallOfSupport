@@ -3,10 +3,19 @@
 import { useEffect, useState } from 'react';
 import { likeMessage } from '@/lib/db';
 import { useToast } from '@/context/ToastContext';
+import { getNoteColor } from '@/lib/noteColors';
 import type { Message } from '@/types';
 
 interface Props {
   message: Message;
+}
+
+function getTilt(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) & 0xffff;
+  }
+  return ((hash % 51) - 25) / 10; // -2.5 to +2.5 degrees
 }
 
 function getLikedMessages(): string[] {
@@ -58,11 +67,14 @@ export default function MessageCard({ message }: Props) {
     }
   }
 
+  const noteColor = getNoteColor(message.color);
+  const tilt = getTilt(message.id);
+
   return (
-    <div className="masonry-item">
+    <div className="masonry-item" style={{ transform: `rotate(${tilt}deg)`, transformOrigin: 'top center' }}>
       <div
         className="relative rounded-xl p-5 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-200 animate-fade-in"
-        style={{ background: 'linear-gradient(150deg, #FFFDE7 0%, #FFF9C4 50%, #FFF176 100%)' }}
+        style={{ background: noteColor.bg }}
       >
         {/* Thumbtack */}
         <div
